@@ -69,22 +69,26 @@ int main(int argc, char *argv[])
         // burst generation per process
         for (int j = 0; j < p.numCpuBursts; ++j)
         {
-            int cpuBurstTime = (ceil(next_exp(lambda, upper_bound)));
-            int ioBurstTime = (ceil(next_exp(lambda, upper_bound))) * 10;
-
-            if (i > num_cpu)
-            {
-                cpuBurstTime *= 4;
-                ioBurstTime /= 8;
-            }
-
             if (j != p.numCpuBursts - 1)
             {
+                int cpuBurstTime = ceil(next_exp(lambda, upper_bound));
+                int ioBurstTime = ceil(next_exp(lambda, upper_bound)) * 10;
+                if (i >= num_processes - num_cpu)
+                {
+                    cpuBurstTime *= 4;
+                    ioBurstTime /= 8;
+                }
                 p.cpuBurstTime.push_back(cpuBurstTime);
                 p.ioBurstTime.push_back(ioBurstTime);
             }
             else
             {
+                int cpuBurstTime = ceil(next_exp(lambda, upper_bound));
+                if (i >= num_processes - num_cpu)
+                {
+                    cpuBurstTime *= 4;
+                    // ioBurstTime /= 8;
+                }
                 p.cpuBurstTime.push_back(cpuBurstTime);
             }
         }
@@ -93,10 +97,15 @@ int main(int argc, char *argv[])
 
 
     // output information for each process
-    std::cout << "<<< PROJECT PART I -- process set (n=" << num_processes << ") with " << num_cpu << " CPU-bound process >>>" << std::endl;
+    std::cout << "<<< PROJECT PART I -- process set (n=" << num_processes << ") with " << num_cpu;
+    if(num_cpu == 1){
+        cout << " CPU-bound process >>>" << std::endl;
+    }else{
+        cout << " CPU-bound processes >>>" << std::endl;
+    }
     for (int i = 0; i < num_processes; i++)
     {
-        if(i <= num_cpu)
+        if (i < num_processes - num_cpu)
             std::cout << "I/O-bound ";
         else
             std::cout << "CPU-bound ";
