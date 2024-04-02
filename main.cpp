@@ -6,11 +6,15 @@
 #include <cmath>
 #include <algorithm>
 #include "Process.h"
+#include "CPU.h"
 using namespace std;
 
 char alphabets[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
 
+// easy way to pass the type of scheduler to the simulation function
+enum scheduler { fcfs, sjf, srt, rr };
 
+// next_exp function for generating random values
 double next_exp(double lambda, int upperBound)
 {
 	double x;
@@ -21,6 +25,29 @@ double next_exp(double lambda, int upperBound)
 	} while (x > upperBound); // Skip values above the upperBound
 	return x;
 }
+
+// prints the queue
+void printQueue(std::vector<Process> &queue)
+{
+	std::cout << "[Q";
+	for(int i = 0; i < queue.size(); i++)
+		std::cout << " " << queue[i].id;
+	std::cout << "]" << std::endl;
+}
+
+// run the simulation; takes a vector of processes to simulate as well as the desired scheduler type
+void runSimulation(std::vector<Process> processes, scheduler schedulerType, CPU &simCpu)
+{
+	// print message to signify beginning of simulator
+	if(schedulerType==fcfs) std::cout << "time 0ms: Simulator started for FCFS ";
+	if(schedulerType==sjf) std::cout << "time 0ms: Simulator started for SJF ";
+	if(schedulerType==srt) std::cout << "time 0ms: Simulator started for SRT ";
+	if(schedulerType==rr) std::cout << "time 0ms: Simulator started for RR ";
+
+	// print queue information
+
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -65,6 +92,8 @@ int main(int argc, char *argv[])
 
 		// initial parameters
 		p.id = alphabets[i];
+		p.turnaroundTime = 0;
+		p.waitTime = 0;
 		p.arrivalTime = floor(next_exp(lambda, upper_bound));
 		p.numCpuBursts = ceil(drand48() * 64);
 
@@ -96,7 +125,7 @@ int main(int argc, char *argv[])
 		processes.push_back(p);
 	}
 
-	// output information for each process
+	// output part 1 information for each process
 	cout << "<<< PROJECT PART I -- process set (n=" << num_processes << ") with " << num_cpu;
 	if (num_cpu == 1)
 	{
@@ -115,5 +144,22 @@ int main(int argc, char *argv[])
 		cout << "process " << processes[i].id << ": arrival time " << processes[i].arrivalTime << "ms; " << processes[i].numCpuBursts << " CPU bursts"
 				  << "\n";
 	}
+
+	// output part 2 information
 	cout << "<<< PROJECT PART II -- t_cs=" << t_cs << "ms; alpha=" << alpha<<"; t_slice="<<t_slice<<"ms >>>"<<endl;
+
+	// create CPU and scheduler for simulation
+	CPU simCpu = CPU();
+	scheduler simScheduler;
+
+	// simulate every scheduling algorithm
+	simScheduler = fcfs;
+	runSimulation(processes, simScheduler, simCpu);
+
+	simScheduler = sjf;
+	runSimulation(processes, simScheduler, simCpu);
+
+	simScheduler = srt;
+	runSimulation(processes, simScheduler, simCpu);
+
 }

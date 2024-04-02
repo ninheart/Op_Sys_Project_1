@@ -8,14 +8,17 @@
 
 using namespace std;
 
+#ifndef PROCESS
+#define PROCESS
+
 struct Process
 {
 public:
     char id;
     int arrivalTime;
     int numCpuBursts;
-    int turnaroundTime = 0;
-    int waitTime = 0;
+    int turnaroundTime;
+    int waitTime;
 
     vector<int> cpuBurstTime;
     vector<int> ioBurstTime;
@@ -25,4 +28,6 @@ public:
         this->arrivalTime = 0;
     };
 };
+
+#endif
 
