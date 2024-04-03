@@ -26,10 +26,15 @@ double next_exp(double lambda, int upperBound)
 	return x;
 }
 
-// prints the queue
+// prints the queue in the specified format
 void printQueue(std::vector<Process> &queue)
 {
 	std::cout << "[Q";
+	if(queue.size() == 0)
+	{
+		std::cout << " <empty>]" << std::endl;
+		return;
+	}
 	for(int i = 0; i < queue.size(); i++)
 		std::cout << " " << queue[i].id;
 	std::cout << "]" << std::endl;
@@ -38,14 +43,54 @@ void printQueue(std::vector<Process> &queue)
 // run the simulation; takes a vector of processes to simulate as well as the desired scheduler type
 void runSimulation(std::vector<Process> processes, scheduler schedulerType, CPU &simCpu)
 {
-	// print message to signify beginning of simulator
+	// simulation time in ms
+	int time = 0;
+
+	// store processes in the simulation -- io is not necessarily a queue but it's easier naming convention
+	std::vector<Process> readyQueue = std::vector<Process>();
+	std::vector<Process> ioQueue = std::vector<Process>();
+
+	// print message to signify beginning of simulation
 	if(schedulerType==fcfs) std::cout << "time 0ms: Simulator started for FCFS ";
 	if(schedulerType==sjf) std::cout << "time 0ms: Simulator started for SJF ";
 	if(schedulerType==srt) std::cout << "time 0ms: Simulator started for SRT ";
 	if(schedulerType==rr) std::cout << "time 0ms: Simulator started for RR ";
+	printQueue(readyQueue);
 
-	// print queue information
+	// main loop - must not be any processes operating
+	while(!readyQueue.empty() || !ioQueue.empty() || !processes.empty())
+	{
+		// check for process arrival
+		for(int i = 0; i < processes.size(); i++)
+		{
+			if(processes[i].arrivalTime == time)
+			{
+				// add to ready queue and remove from the input vector
+				readyQueue.push_back(processes[i]);
+				processes.erase(processes.begin() + i);
+				i--;
 
+				// print arrival message
+				std::cout << "time " << time << "ms: Process " << readyQueue.back().id << " arrived ";
+				printQueue(readyQueue);
+			}
+		}
+
+		// check for io completion (and put processes back in ready queue)
+
+		// check whatever else is needed (haven't looked yet)
+
+		// increment process time
+		time++;
+	}
+
+	// print message to signify ending of simulation
+	if(schedulerType==fcfs) std::cout << "time " << time << "ms: Simulator ended for FCFS ";
+	if(schedulerType==sjf) std::cout << "time " << time << "ms: Simulator ended for SJF ";
+	if(schedulerType==srt) std::cout << "time " << time << "ms: Simulator ended for SRT ";
+	if(schedulerType==rr) std::cout << "time " << time << "ms: Simulator ended for RR ";
+
+	// output statistics
 }
 
 
@@ -144,6 +189,7 @@ int main(int argc, char *argv[])
 		cout << "process " << processes[i].id << ": arrival time " << processes[i].arrivalTime << "ms; " << processes[i].numCpuBursts << " CPU bursts"
 				  << "\n";
 	}
+	std::cout << std::endl;
 
 	// output part 2 information
 	cout << "<<< PROJECT PART II -- t_cs=" << t_cs << "ms; alpha=" << alpha<<"; t_slice="<<t_slice<<"ms >>>"<<endl;
