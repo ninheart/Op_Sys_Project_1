@@ -1,4 +1,7 @@
 #include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <vector>
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,7 +133,24 @@ bool compareArrivalTime(const Process &p1, const Process &p2)
 	}
 }
 
-void FCFS(vector<Process> &processes, int n, int t_cs)
+string ceilTo3(double value){
+	double roundedValue = std::ceil(value * 1000.0) / 1000.0;
+	stringstream ss;
+	ss << std::fixed << std::setprecision(3) << roundedValue;
+	return ss.str();
+}
+
+string cpuUtilization(int time, vector<Process> processes, int n){
+	double totalBurstTime = 0;
+	for(int i = 0; i < n; ++i){
+		for(int j = 0; j < processes[i].cpuBurstTime.size(); ++j){
+			totalBurstTime += processes[i].cpuBurstTime[j];
+		}
+	}
+	return ceilTo3(totalBurstTime / time * 100);
+}
+
+void FCFS(vector<Process> &processes, int n, int t_cs, const string &outputFileName)
 {
 	sort(processes.begin(), processes.end(), compareArrivalTime);
 
@@ -270,6 +290,21 @@ void FCFS(vector<Process> &processes, int n, int t_cs)
 	time = time + t_cs/2 -1;
 	cout << "time " << time << "ms: Simulator ended for FCFS ";
 	cpu.printQueue();
+
+	// write to file
+	ofstream outputFile(outputFileName);
+	if (!outputFile.is_open())
+	{
+		cerr << "Error: Unable to open output file: " << outputFileName << std::endl;
+		return;
+	}
+
+	outputFile <<"Algorithm FCFS"<<endl;
+	outputFile <<"-- CPU utilization: "<<cpuUtilization(time,processes,n)<<"%"<<endl;
+	outputFile <<"-- average CPU burst time: "<<endl;
+
+	outputFile.close();
+
 }
 
 int main(int argc, char *argv[])
@@ -376,8 +411,10 @@ int main(int argc, char *argv[])
 	CPU simCpu = CPU();
 	scheduler simScheduler;
 
+	string outputFileName = "simout.txt";
+
 	reset(processes, num_processes);
-	FCFS(processes, num_processes, t_cs);
+	FCFS(processes, num_processes, t_cs, outputFileName);
 
 	// simulate every scheduling algorithm
 	// simScheduler = fcfs;
