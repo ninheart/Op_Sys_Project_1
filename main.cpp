@@ -59,69 +59,7 @@ void printQueue(std::vector<Process> &queue)
 	std::cout << "]" << std::endl;
 }
 
-// DEPRECATED - run the simulation; takes a vector of processes to simulate as well as the desired scheduler type
-/*
-void runSimulation(std::vector<Process> processes, scheduler schedulerType, CPU &simCpu)
-{
-	// simulation time in ms
-	int time = 0;
-
-	// store processes in the simulation -- io is not necessarily a queue but it's easier naming convention
-	std::vector<Process> readyQueue = std::vector<Process>();
-	std::vector<Process> ioQueue = std::vector<Process>();
-
-	// print message to signify beginning of simulation
-	if (schedulerType == fcfs)
-		std::cout << "time 0ms: Simulator started for FCFS ";
-	if (schedulerType == sjf)
-		std::cout << "time 0ms: Simulator started for SJF ";
-	if (schedulerType == srt)
-		std::cout << "time 0ms: Simulator started for SRT ";
-	if (schedulerType == rr)
-		std::cout << "time 0ms: Simulator started for RR ";
-	printQueue(readyQueue);
-
-	// main loop - must not be any processes operating
-	while (!readyQueue.empty() || !ioQueue.empty() || !processes.empty())
-	{
-		// check for process arrival
-		for (int i = 0; i < processes.size(); i++)
-		{
-			if (processes[i].arrivalTime == time)
-			{
-				// add to ready queue and remove from the input vector
-				readyQueue.push_back(processes[i]);
-				processes.erase(processes.begin() + i);
-				i--;
-
-				// print arrival message
-				std::cout << "time " << time << "ms: Process " << readyQueue.back().id << " arrived ";
-				printQueue(readyQueue);
-			}
-		}
-
-		// check for io completion (and put processes back in ready queue)
-
-		// check whatever else is needed (haven't looked yet)
-
-		// increment process time
-		time++;
-	}
-
-	// print message to signify ending of simulation
-	if (schedulerType == fcfs)
-		std::cout << "time " << time << "ms: Simulator ended for FCFS ";
-	if (schedulerType == sjf)
-		std::cout << "time " << time << "ms: Simulator ended for SJF ";
-	if (schedulerType == srt)
-		std::cout << "time " << time << "ms: Simulator ended for SRT ";
-	if (schedulerType == rr)
-		std::cout << "time " << time << "ms: Simulator ended for RR ";
-
-	// output statistics
-}
-*/
-
+// compare two processes by least arrival time (and if they are equal, by least ID)
 bool compareArrivalTime(const Process &p1, const Process &p2)
 {
 	if (p1.arrivalTime != p2.arrivalTime)
@@ -136,6 +74,7 @@ bool compareArrivalTime(const Process &p1, const Process &p2)
 	}
 }
 
+// compare two processes by least tau value (and if they are equal, by least ID)
 bool compareTau(const Process &p1, const Process &p2)
 {
 	// Compare tau if not equal, otherwise the id
@@ -145,6 +84,7 @@ bool compareTau(const Process &p1, const Process &p2)
 		return p1.id < p2.id;
 }
 
+// compare two processes by least lexicographical order
 bool compareID(const Process &p1, const Process &p2)
 {
 	return p1.id < p2.id;
@@ -157,6 +97,7 @@ string ceilTo3(double value){
 	return ss.str();
 }
 
+// calculates the average CPU utilization for a group of processes and returns it in the specified format as a String
 string cpuUtilization(int time, vector<Process> processes, int n){
 	double totalBurstTime = 0;
 	for(int i = 0; i < n; ++i){
@@ -167,9 +108,9 @@ string cpuUtilization(int time, vector<Process> processes, int n){
 	return ceilTo3(totalBurstTime / time * 100);
 }
 
+// calculates the average CPU burst time for a group of processes and returns it in the specified format as a String
 string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
 {
-	std::sort(processes.begin(), processes.end(), compareID);
 	double avgBurst = 0;
 	int burstCount = 0;
 
@@ -181,7 +122,7 @@ string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
 	{
 		for(int j = 0; j < processes[i].cpuBurstTime.size(); j++)
 		{
-			if(i < n - 1)
+			if(processes[i].cpuBound)
 			{
 				avgCPUBoundBurst += processes[i].cpuBurstTime[j];
 				cpuBurst++;
@@ -198,10 +139,10 @@ string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
 	return ceilTo3(avgBurst / burstCount) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
 }
 
+// calculates the average process wait time for a group of processes and returns it in the specified format as a String
 string avgWaitTime(int time, vector<Process> processes, int n, int num_cpu)
 {
-	// Replace burst with wait :)
-	std::sort(processes.begin(), processes.end(), compareID);
+	// for ease of coding, start with the burst code from above
 	double avgBurst = 0;
 	double avgIOBoundBurst = 0;
 	double avgCPUBoundBurst = 0;
@@ -213,7 +154,7 @@ string avgWaitTime(int time, vector<Process> processes, int n, int num_cpu)
 	{
 		for(int j = 0; j < processes[i].waitTimes.size(); j++)
 		{
-			if(i < n - 1)
+			if(processes[i].cpuBound)
 			{
 				avgCPUBoundBurst += processes[i].waitTimes[j];
 				cpuBurst++;
@@ -230,15 +171,14 @@ string avgWaitTime(int time, vector<Process> processes, int n, int num_cpu)
 	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
 }
 
+// calculates the average process turnaround time for a group of processes and reutrns it in the specified format as a String
 string avgTurnaround(int time, vector<Process> processes, int n, int num_cpu, int cpuCS, int ioCS, double t_cs)
 {
 	// Turnaround formula
+	// = 1/2 in context switch + 1/2 out context switch + wait time + burst time
+	// = # of switches * t_cs + wait time + burst time
 	//
-	// = 1/2 in switch + 1/2 out switch + wait time + burst time
-	// = # of switches + wait time + burst time
-	//
-	// for ease of coding, use the burst code from above
-	std::sort(processes.begin(), processes.end(), compareID);
+	// for ease of coding, start with the burst code from above
 	double avgBurst = 0;
 	double avgIOBoundBurst = 0;
 	double avgCPUBoundBurst = 0;
@@ -252,7 +192,7 @@ string avgTurnaround(int time, vector<Process> processes, int n, int num_cpu, in
 	{
 		for(int j = 0; j < processes[i].waitTimes.size(); j++)
 		{
-			if(i < n - 1)
+			if(processes[i].cpuBound)
 			{
 				avgCPUBoundBurst += processes[i].waitTimes[j];
 				avgCPUBoundBurst += processes[i].cpuBurstTime[j];
@@ -426,7 +366,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 
 }
 
-// SJF algorithm from start to finish
+// SJF algorithm
 void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu, ofstream &outputFile)
 {
 	sort(processes.begin(), processes.end(), compareArrivalTime);
@@ -662,7 +602,8 @@ int main(int argc, char *argv[])
 		p.numCpuBursts = ceil(drand48() * 64);
 		p.tau = 1 / lambda;
 
-		if(i < num_cpu)
+		// determine whether a process is CPU-bound (any process created with index below num_cpu)
+		if(i < num_cpu + 1)
 			p.cpuBound = true;
 		else
 			p.cpuBound = false;
@@ -729,10 +670,14 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	// !--- MAIN FUNCTION CALLS ---!
+
+	// FCFS call & output
 	reset(processes, num_processes);
 	FCFS(processes, num_processes, t_cs, outputFile);
 	std::cout << std::endl;
 
+	// SJF call & output
 	reset(processes, num_processes);
 	SJF(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
 	std::cout << std::endl;
