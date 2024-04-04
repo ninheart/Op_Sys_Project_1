@@ -431,7 +431,9 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				p->beginTime = time;
 				p->inQueue = true;
 				deque<Process>* q = cpu.getProcessQueue();
-
+				deque<Process> q2 = deque<Process>();
+				for(int i = 0; i < q->size(); i++)
+					q2.push_back(q->at(i));
 				if(p->inIO)
 				{
 					p->inIO = false;
@@ -440,7 +442,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 						cout << "time " << time << "ms: " <<"Process "<< p->id <<" (tau " << p->tau << "ms) completed I/O; added to ready queue ";
 
 					// sort queue by tau
-					std::sort(q->begin(), q->end(), compareTau);
+					std::sort(q2.begin(), q2.end(), compareTau);
 					if(time < 10000)
 						cpu.printQueue();
 				}
@@ -450,7 +452,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 						cout << "time " << time << "ms: " << "Process " << p->id << " (tau " << p->tau << "ms) arrived; added to ready queue ";
 
 					// sort queue by tau
-					std::sort(q->begin(), q->end(), compareTau);
+					std::sort(q2.begin(), q2.end(), compareTau);
 					if(time < 10000)
 						cpu.printQueue();
 				}
@@ -481,9 +483,8 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 			if(p->inCPU)
 			{
 				// if it is time to burst
-				if(p->cpuTime == p->cpuBurstTime[p->step]){
-
-					// cpu.currentProcess = NULL;
+				if(p->cpuTime == p->cpuBurstTime[p->step])
+				{
 					cpu.switchingProcess = p;
 					cpu.context += t_cs/2;
 					p->swap = false;
