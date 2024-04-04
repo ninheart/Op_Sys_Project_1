@@ -52,9 +52,9 @@ public:
 		}
 		else
 		{
-			for (auto i = processQueue.begin(); i != processQueue.end(); ++i)
+			for (int i = 0; i < processQueue.size(); ++i)
 			{
-				cout << ' '<<(*i).id;
+				cout << ' '<< (processQueue[i]).id;
 			}
 			cout << "]" << endl;
 		}

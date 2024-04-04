@@ -322,13 +322,11 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 
 	CPU cpu;
 	cpu.context = 0;
-	cout << "time " << time << "ms:"
-		 << " Simulator started for SJF ";
+	cout << "time " << time << "ms:" << " Simulator started for SJF ";
 	cpu.printQueue();
 
 	while (alive > 0)
 	{
-
 		if (cpu.context > 0)
 			cpu.context--;
 
@@ -343,7 +341,7 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 				cpu.popFront();
 
 				cout<<"time "<<time<<"ms: ";
-				cout << "Process " << temp->id << " started using the CPU for "<<temp->cpuBurstTime[temp->step]<<"ms burst ";
+				cout << "Process " << temp->id << " started using the CPU for " << temp->cpuBurstTime[temp->step] <<"ms burst ";
 				cpu.printQueue();
 				contextSwtich +=1;
 			}
@@ -363,7 +361,7 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 			{
 				cpu.addProcess(*p);
 				p->inQueue = true;
-
+				deque<Process>* q = cpu.getProcessQueue();
 
 				if (p->inIO)
 				{
@@ -373,12 +371,13 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 					cout<<"Process "<< p->id <<" completed I/O; added to ready queue ";
 					// cout<<cpu.currentProcess->id<<endl;
 					// sort queue by arrival time
-
+					std::sort(q->begin(), q->end(), compareArrivalTime);
 					cpu.printQueue();
 				}else{
 					cout << "time " << time << "ms: ";
 					cout << "Process " << p->id << " arrived; added to ready queue ";
 					// sort queue by arrival time
+					std::sort(q->begin(), q->end(), compareArrivalTime);
 					cpu.printQueue();
 				}
 			}
@@ -445,6 +444,7 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 					// swith out process
 					cpu.currentProcess = NULL;
 				}
+				p->cpuTime++;
 			}
 		}
 		time++;
