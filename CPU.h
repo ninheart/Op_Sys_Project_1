@@ -11,33 +11,46 @@ using namespace std;
 class CPU
 {
 private:
+
+	// ready queue
 	deque<Process> processQueue;
 
 public:
+
+	// construct a CPU
 	CPU()
 	{
 		currentProcess = NULL;
 		switchingProcess = NULL;
 		context = 0;
 	}
-	Process *currentProcess; //current process running in cpu
+
+	// running process
+	Process *currentProcess;
+
+	// process to be switched into the CPU
 	Process *switchingProcess;
 
-	int context;  //context switch
+	// context switch
+	int context;
 
+	// add to ready queue
 	void addProcess(const Process &process)
 	{
 		processQueue.push_back(process);
 	}
 
+	// return process at front of ready queue
     Process front(){
 		return processQueue.front();
 	}
 
+	// remove process from front of ready queue
 	void popFront(){
 		return processQueue.pop_front();
 	}
 
+	// return size of ready queue
 	int getQueueSize(){
 		return processQueue.size();
 	}
@@ -60,6 +73,7 @@ public:
 		}
 	}
 
+	// return reference to process queue
 	deque<Process>* getProcessQueue() { return &processQueue;}
 };
 

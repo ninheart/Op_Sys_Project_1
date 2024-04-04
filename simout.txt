@@ -1,2 +1,11 @@
 Algorithm FCFS
 -- CPU utilization: 84.253%
+-- average CPU burst time: 
+
+Algorithm SJF
+-- CPU utilization: 84.062%
+-- average CPU burst time: 3067.776 ms (4071.000 ms/992.138 ms)
+-- average wait time: 804.540 ms (229.584 ms/1994.104 ms)
+-- average turnaround time: 3876.315 ms (4305.384 ms/2988.587 ms)
+-- number of context switches: 89 (72/17)
+-- number of preemptions: 0 (0/0)

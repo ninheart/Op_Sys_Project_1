@@ -35,6 +35,7 @@ double next_exp(double lambda, int upperBound)
 	return x;
 }
 
+// resets process parameters for next simulation
 void reset(vector<Process> &procceses, int n)
 {
 	for (int i = 0; i < n; ++i)
@@ -135,6 +136,20 @@ bool compareArrivalTime(const Process &p1, const Process &p2)
 	}
 }
 
+bool compareTau(const Process &p1, const Process &p2)
+{
+	// Compare tau if not equal, otherwise the id
+	if(p1.tau != p2.tau)
+		return p1.tau < p2.tau;
+	else
+		return p1.id < p2.id;
+}
+
+bool compareID(const Process &p1, const Process &p2)
+{
+	return p1.id < p2.id;
+}
+
 string ceilTo3(double value){
 	double roundedValue = std::ceil(value * 1000.0) / 1000.0;
 	stringstream ss;
@@ -152,7 +167,118 @@ string cpuUtilization(int time, vector<Process> processes, int n){
 	return ceilTo3(totalBurstTime / time * 100);
 }
 
-void FCFS(vector<Process> &processes, int n, int t_cs, const string &outputFileName)
+string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
+{
+	std::sort(processes.begin(), processes.end(), compareID);
+	double avgBurst = 0;
+	int burstCount = 0;
+
+	double avgIOBoundBurst = 0;
+	double avgCPUBoundBurst = 0;
+	int cpuBurst = 0;
+	int ioBurst = 0;
+	for(int i = 0; i < n; i++)
+	{
+		for(int j = 0; j < processes[i].cpuBurstTime.size(); j++)
+		{
+			if(i < n - 1)
+			{
+				avgCPUBoundBurst += processes[i].cpuBurstTime[j];
+				cpuBurst++;
+			}
+			else
+			{
+				avgIOBoundBurst += processes[i].cpuBurstTime[j];
+				ioBurst++;
+			}
+			avgBurst += processes[i].cpuBurstTime[j];
+			burstCount++;
+		}
+	}
+	return ceilTo3(avgBurst / burstCount) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
+}
+
+string avgWaitTime(int time, vector<Process> processes, int n, int num_cpu)
+{
+	// Replace burst with wait :)
+	std::sort(processes.begin(), processes.end(), compareID);
+	double avgBurst = 0;
+	double avgIOBoundBurst = 0;
+	double avgCPUBoundBurst = 0;
+
+	int burst = 0;
+	int ioBurst = 0;
+	int cpuBurst = 0;
+	for(int i = 0; i < n; i++)
+	{
+		for(int j = 0; j < processes[i].waitTimes.size(); j++)
+		{
+			if(i < n - 1)
+			{
+				avgCPUBoundBurst += processes[i].waitTimes[j];
+				cpuBurst++;
+			}
+			else
+			{
+				avgIOBoundBurst += processes[i].waitTimes[j];
+				ioBurst++;
+			}
+			avgBurst += processes[i].waitTimes[j];
+			burst++;
+		}
+	}
+	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
+}
+
+string avgTurnaround(int time, vector<Process> processes, int n, int num_cpu, int cpuCS, int ioCS, double t_cs)
+{
+	// Turnaround formula
+	//
+	// = 1/2 in switch + 1/2 out switch + wait time + burst time
+	// = # of switches + wait time + burst time
+	//
+	// for ease of coding, use the burst code from above
+	std::sort(processes.begin(), processes.end(), compareID);
+	double avgBurst = 0;
+	double avgIOBoundBurst = 0;
+	double avgCPUBoundBurst = 0;
+
+	int burst = 0;
+	int ioBurst = 0;
+	int cpuBurst = 0;
+
+	// Add wait time and burst time
+	for(int i = 0; i < n; i++)
+	{
+		for(int j = 0; j < processes[i].waitTimes.size(); j++)
+		{
+			if(i < n - 1)
+			{
+				avgCPUBoundBurst += processes[i].waitTimes[j];
+				avgCPUBoundBurst += processes[i].cpuBurstTime[j];
+				cpuBurst++;
+			}
+			else
+			{
+				avgIOBoundBurst += processes[i].waitTimes[j];
+				avgIOBoundBurst += processes[i].cpuBurstTime[j];
+				ioBurst++;
+			}
+			avgBurst += processes[i].waitTimes[j];
+			avgBurst += processes[i].cpuBurstTime[j];
+			burst++;
+		}
+	}
+
+	// Add in # of switches
+	avgCPUBoundBurst += cpuCS * t_cs;
+	avgIOBoundBurst += ioCS * t_cs;
+	avgBurst += (ioCS + cpuCS) * t_cs;
+
+	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
+}
+
+void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 {
 	sort(processes.begin(), processes.end(), compareArrivalTime);
 
@@ -281,7 +407,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, const string &outputFileN
 					cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime<<"ms ";
 					cpu.printQueue();
 
-					// swith out process
+					// switch out process
 					cpu.currentProcess = NULL;
 				}
 				p->cpuTime++;
@@ -293,24 +419,15 @@ void FCFS(vector<Process> &processes, int n, int t_cs, const string &outputFileN
 	cout << "time " << time << "ms: Simulator ended for FCFS ";
 	cpu.printQueue();
 
-	// write to file
-	ofstream outputFile(outputFileName);
-	if (!outputFile.is_open())
-	{
-		cerr << "Error: Unable to open output file: " << outputFileName << std::endl;
-		return;
-	}
-
-	outputFile <<"Algorithm FCFS"<<endl;
-	outputFile <<"-- CPU utilization: "<<cpuUtilization(time,processes,n)<<"%"<<endl;
-	outputFile <<"-- average CPU burst time: "<<endl;
-
-	outputFile.close();
+	outputFile <<"Algorithm FCFS"<< std::endl;
+	outputFile <<"-- CPU utilization: "<<cpuUtilization(time,processes,n)<<"%"<< std::endl;
+	outputFile <<"-- average CPU burst time: "<< std::endl;
+	outputFile << std::endl;
 
 }
 
 // SJF algorithm from start to finish
-void SJF(vector<Process> &processes, int n, int t_cs)
+void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu, ofstream &outputFile)
 {
 	sort(processes.begin(), processes.end(), compareArrivalTime);
 
@@ -318,7 +435,9 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 	int alive = n;
 	double waitTime = 0;
 	double turnaroundTime = 0;
-	int contextSwtich = 0;
+	int contextSwitch = 0;
+	int cpuContextSwitch = 0;
+	int ioContextSwitch = 0;
 
 	CPU cpu;
 	cpu.context = 0;
@@ -339,11 +458,20 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 				cpu.currentProcess = temp;
 				cpu.switchingProcess = NULL;
 				cpu.popFront();
+				temp->turnaroundTime += t_cs / 2 + 1;
 
-				cout<<"time "<<time<<"ms: ";
-				cout << "Process " << temp->id << " started using the CPU for " << temp->cpuBurstTime[temp->step] <<"ms burst ";
-				cpu.printQueue();
-				contextSwtich +=1;
+				// Count context switches
+				contextSwitch++;
+				if(temp->cpuBound)
+					cpuContextSwitch++;
+				else
+					ioContextSwitch++;
+
+				if(time < 10000)
+				{
+					cout<<"time "<<time<<"ms: " << "Process " << temp->id << " (tau " << temp->tau << "ms) started using the CPU for " << temp->cpuBurstTime[temp->step] <<"ms burst ";
+					cpu.printQueue();
+				}
 			}
 			else
 			{
@@ -360,28 +488,35 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 			if (time == p->nextArrivalTime)
 			{
 				cpu.addProcess(*p);
+				p->beginTime = time;
 				p->inQueue = true;
 				deque<Process>* q = cpu.getProcessQueue();
 
-				if (p->inIO)
+				if(p->inIO)
 				{
 					p->inIO = false;
 					p->step++;
-					cout << "time " << time << "ms: ";
-					cout<<"Process "<< p->id <<" completed I/O; added to ready queue ";
-					// cout<<cpu.currentProcess->id<<endl;
-					// sort queue by arrival time
-					std::sort(q->begin(), q->end(), compareArrivalTime);
-					cpu.printQueue();
-				}else{
-					cout << "time " << time << "ms: ";
-					cout << "Process " << p->id << " arrived; added to ready queue ";
-					// sort queue by arrival time
-					std::sort(q->begin(), q->end(), compareArrivalTime);
-					cpu.printQueue();
+					if(time < 10000)
+						cout << "time " << time << "ms: " <<"Process "<< p->id <<" (tau " << p->tau << "ms) completed I/O; added to ready queue ";
+
+					// sort queue by tau
+					std::sort(q->begin(), q->end(), compareTau);
+					if(time < 10000)
+						cpu.printQueue();
+				}
+				else
+				{
+					if(time < 10000)
+						cout << "time " << time << "ms: " << "Process " << p->id << " (tau " << p->tau << "ms) arrived; added to ready queue ";
+
+					// sort queue by tau
+					std::sort(q->begin(), q->end(), compareTau);
+					if(time < 10000)
+						cpu.printQueue();
 				}
 			}
 
+			// Check queue status (if it is time to switch)
 			if (p->inQueue)
 			{
 				// if there's no other process runnning then run this process
@@ -393,6 +528,7 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 					cpu.context += t_cs / 2;
 					cpu.switchingProcess = p;
 					p->cpuTime = 0;
+					p->waitTimes.push_back(p->waitTime);
 					p->waitTime = 0;
 				}
 				else
@@ -401,9 +537,10 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 				}
 			}
 
-
-			if(p->inCPU){
-				// now check if the burst is done
+			// Check CPU status (if the burst is done)
+			if(p->inCPU)
+			{
+				// if it is time to burst
 				if(p->cpuTime == p->cpuBurstTime[p->step]){
 
 					// cpu.currentProcess = NULL;
@@ -425,23 +562,37 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 						continue;
 					}
 
-					int updateArrivalTime=time+(p->ioBurstTime)[p->step]+(t_cs/2);
-					// p->step++;
+					// Burst completion messaging
+					int updateArrivalTime = time+(p->ioBurstTime)[p->step]+(t_cs/2);
 					p->nextArrivalTime = updateArrivalTime;
 
-					cout<<"time "<<time<<"ms: Process "<<p->id<<" completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
-					if (p->cpuBurstTime.size() - p->step - 1 == 1){
+					if(time < 10000)
+						cout<<"time "<<time<<"ms: Process "<<p->id<<" (tau " << p->tau << "ms) completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
+
+					// Print whether there is a single or multiple bursts left
+					if(p->cpuBurstTime.size() - p->step - 1 == 1 && time < 10000)
 						cout << " burst to go ";
-					}else{
+					else if(time < 10000)
 						cout << " bursts to go ";
+					if(time < 10000)
+						cpu.printQueue();
+
+					// Recalculate tau once the burst is done
+					int newTau = ceil((1-alpha)*p->tau + (alpha)*p->cpuBurstTime[p->step]);
+					if(time < 10000)
+					{
+						std::cout << "time " << time << "ms: Recalculating tau for process " << p->id << ": old tau " << p->tau << "ms ==> new tau " << newTau << "ms ";
+						cpu.printQueue();
 					}
-						
-					cpu.printQueue();
+					p->tau = newTau; 
 
-					cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime<<"ms ";
-					cpu.printQueue();
+					if(time < 10000)
+					{
+						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
+						cpu.printQueue();
+					}
 
-					// swith out process
+					// Switch out the process
 					cpu.currentProcess = NULL;
 				}
 				p->cpuTime++;
@@ -452,6 +603,14 @@ void SJF(vector<Process> &processes, int n, int t_cs)
 	time = time + t_cs/2 -1;
 	cout << "time " << time << "ms: Simulator ended for SJF ";
 	cpu.printQueue();
+
+	outputFile << "Algorithm SJF" << std::endl;
+	outputFile << "-- CPU utilization: " << cpuUtilization(time, processes, n) << "%" << std::endl;
+	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << std::endl;
+	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << std::endl;
+	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << std::endl;
+	outputFile << "-- number of context switches: " << contextSwitch << " (" << ioContextSwitch << "/" << cpuContextSwitch << ")" << std::endl;
+	outputFile << "-- number of preemptions: 0 (0/0)" << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -501,6 +660,12 @@ int main(int argc, char *argv[])
 		p.waitTime = 0;
 		p.arrivalTime = floor(next_exp(lambda, upper_bound));
 		p.numCpuBursts = ceil(drand48() * 64);
+		p.tau = 1 / lambda;
+
+		if(i < num_cpu)
+			p.cpuBound = true;
+		else
+			p.cpuBound = false;
 
 		// burst generation per process
 		for (int j = 0; j < p.numCpuBursts; ++j)
@@ -556,16 +721,22 @@ int main(int argc, char *argv[])
 
 	string outputFileName = "simout.txt";
 
+	// write to file
+	ofstream outputFile(outputFileName);
+	if (!outputFile.is_open())
+	{
+		cerr << "Error: Unable to open output file: " << outputFileName << std::endl;
+		return 1;
+	}
+
 	reset(processes, num_processes);
-	FCFS(processes, num_processes, t_cs, outputFileName);
+	FCFS(processes, num_processes, t_cs, outputFile);
+	std::cout << std::endl;
 
-	// simulate every scheduling algorithm
-	// simScheduler = fcfs;
-	// runSimulation(processes, simScheduler, simCpu);
+	reset(processes, num_processes);
+	SJF(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
+	std::cout << std::endl;
 
-	// simScheduler = sjf;
-	// runSimulation(processes, simScheduler, simCpu);
+	outputFile.close();
 
-	// simScheduler = srt;
-	// runSimulation(processes, simScheduler, simCpu);
 }
