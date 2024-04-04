@@ -14,20 +14,32 @@ using namespace std;
 struct Process
 {
 public:
+
+    Process()
+    {
+        this->waitTime = 0;
+        this->cpuTime = 0;
+        this->step = 0;
+        this->inCPU =false;
+        this->inQueue = false;
+        this->inIO = false;
+        this->swap = true;
+        this->turn = false;
+    }
     char id;
     int arrivalTime;
     int nextArrivalTime;
     int numCpuBursts;
     int turnaroundTime;
-    int waitTime = 0;
-    int cpuTime = 0;
+    int waitTime;
+    int cpuTime;
 
-    int step = 0;
-    bool inCPU = false;
-    bool inQueue = false;
-    bool inIO = false;
-    bool swap = true;
-    bool turn = false;
+    int step;
+    bool inCPU;
+    bool inQueue;
+    bool inIO;
+    bool swap;
+    bool turn;
 
     vector<int> cpuBurstTime;
     vector<int> ioBurstTime;

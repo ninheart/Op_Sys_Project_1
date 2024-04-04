@@ -14,17 +14,21 @@ private:
 	deque<Process> processQueue;
 
 public:
-	Process *currentProcess = NULL; //current process running in cpu
-	Process *switchingProcess = NULL;
+	CPU()
+	{
+		currentProcess = NULL;
+		switchingProcess = NULL;
+		context = 0;
+	}
+	Process *currentProcess; //current process running in cpu
+	Process *switchingProcess;
 
-	int context = 0;  //context switch
+	int context;  //context switch
 
 	void addProcess(const Process &process)
 	{
 		processQueue.push_back(process);
 	}
-
-	// prints the queue in the specified format
 
     Process front(){
 		return processQueue.front();
@@ -38,7 +42,7 @@ public:
 		return processQueue.size();
 	}
 
-
+	// prints the queue in the specified format
 	void printQueue()
 	{
 		cout << "[Q";
@@ -55,6 +59,8 @@ public:
 			cout << "]" << endl;
 		}
 	}
+
+	deque<Process>* getProcessQueue() { return &processQueue;}
 };
 
 #endif

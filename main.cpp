@@ -58,7 +58,8 @@ void printQueue(std::vector<Process> &queue)
 	std::cout << "]" << std::endl;
 }
 
-// run the simulation; takes a vector of processes to simulate as well as the desired scheduler type
+// DEPRECATED - run the simulation; takes a vector of processes to simulate as well as the desired scheduler type
+/*
 void runSimulation(std::vector<Process> processes, scheduler schedulerType, CPU &simCpu)
 {
 	// simulation time in ms
@@ -118,6 +119,7 @@ void runSimulation(std::vector<Process> processes, scheduler schedulerType, CPU 
 
 	// output statistics
 }
+*/
 
 bool compareArrivalTime(const Process &p1, const Process &p2)
 {
@@ -307,6 +309,151 @@ void FCFS(vector<Process> &processes, int n, int t_cs, const string &outputFileN
 
 }
 
+// SJF algorithm from start to finish
+void SJF(vector<Process> &processes, int n, int t_cs)
+{
+	sort(processes.begin(), processes.end(), compareArrivalTime);
+
+	int time = 0;
+	int alive = n;
+	double waitTime = 0;
+	double turnaroundTime = 0;
+	int contextSwtich = 0;
+
+	CPU cpu;
+	cpu.context = 0;
+	cout << "time " << time << "ms:"
+		 << " Simulator started for SJF ";
+	cpu.printQueue();
+
+	while (alive > 0)
+	{
+
+		if (cpu.context > 0)
+			cpu.context--;
+
+		if (cpu.context == 0 && cpu.switchingProcess != NULL)
+		{
+			Process *temp = cpu.switchingProcess;
+			if (temp->swap)
+			{
+				temp->inCPU = true;
+				cpu.currentProcess = temp;
+				cpu.switchingProcess = NULL;
+				cpu.popFront();
+
+				cout<<"time "<<time<<"ms: ";
+				cout << "Process " << temp->id << " started using the CPU for "<<temp->cpuBurstTime[temp->step]<<"ms burst ";
+				cpu.printQueue();
+				contextSwtich +=1;
+			}
+			else
+			{
+				temp->inIO = true;
+				cpu.switchingProcess = NULL;
+				temp->turn = false;
+			}
+		}
+
+		for (int i = 0; i < n; i++)
+		{
+			Process *p = &(processes[i]);
+			// add process to queue
+			if (time == p->nextArrivalTime)
+			{
+				cpu.addProcess(*p);
+				p->inQueue = true;
+
+
+				if (p->inIO)
+				{
+					p->inIO = false;
+					p->step++;
+					cout << "time " << time << "ms: ";
+					cout<<"Process "<< p->id <<" completed I/O; added to ready queue ";
+					// cout<<cpu.currentProcess->id<<endl;
+					// sort queue by arrival time
+
+					cpu.printQueue();
+				}else{
+					cout << "time " << time << "ms: ";
+					cout << "Process " << p->id << " arrived; added to ready queue ";
+					// sort queue by arrival time
+					cpu.printQueue();
+				}
+			}
+
+			if (p->inQueue)
+			{
+				// if there's no other process runnning then run this process
+				if (cpu.currentProcess == NULL && cpu.switchingProcess == NULL && *p == cpu.front())
+				{
+					p->inQueue = false;
+					p->swap = true;
+					waitTime += p->waitTime;
+					cpu.context += t_cs / 2;
+					cpu.switchingProcess = p;
+					p->cpuTime = 0;
+					p->waitTime = 0;
+				}
+				else
+				{
+					p->waitTime += 1;
+				}
+			}
+
+
+			if(p->inCPU){
+				// now check if the burst is done
+				if(p->cpuTime == p->cpuBurstTime[p->step]){
+
+					// cpu.currentProcess = NULL;
+					cpu.switchingProcess = p;
+					cpu.context += t_cs/2;
+					p->swap = false;
+					p->inCPU = false;
+
+					if(p->step == int(p->cpuBurstTime.size()-1)){
+						p->inQueue = false;
+						p->inIO = false;
+
+						alive--;
+						cout<<"time "<<time<<"ms: ";
+						cout<<"Process "<<p->id<<" terminated ";
+						cpu.printQueue();
+
+						cpu.currentProcess = NULL;
+						continue;
+					}
+
+					int updateArrivalTime=time+(p->ioBurstTime)[p->step]+(t_cs/2);
+					// p->step++;
+					p->nextArrivalTime = updateArrivalTime;
+
+					cout<<"time "<<time<<"ms: Process "<<p->id<<" completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
+					if (p->cpuBurstTime.size() - p->step - 1 == 1){
+						cout << " burst to go ";
+					}else{
+						cout << " bursts to go ";
+					}
+						
+					cpu.printQueue();
+
+					cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime<<"ms ";
+					cpu.printQueue();
+
+					// swith out process
+					cpu.currentProcess = NULL;
+				}
+			}
+		}
+		time++;
+	}
+	time = time + t_cs/2 -1;
+	cout << "time " << time << "ms: Simulator ended for SJF ";
+	cpu.printQueue();
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -405,11 +552,7 @@ int main(int argc, char *argv[])
 	std::cout << std::endl;
 
 	// output part 2 information
-	cout << "<<< PROJECT PART II -- t_cs=" << t_cs << "ms; alpha=" << alpha << "; t_slice=" << t_slice << "ms >>>" << endl;
-
-	// create CPU and scheduler for simulation
-	CPU simCpu = CPU();
-	scheduler simScheduler;
+	cout << "<<< PROJECT PART II -- t_cs=" << t_cs << "ms; alpha=" << alpha << "; t_slice=" << t_slice << "ms >>>" << endl; 
 
 	string outputFileName = "simout.txt";
 
