@@ -449,7 +449,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				{
 					p->inIO = false;
 					p->step++;
-					if(time < 10000 || time > 70000)
+					if(time < 10000)
 					{
 						cout << "time " << time << "ms: " <<"Process "<< p->id <<" (tau " << p->tau << "ms) completed I/O; added to ready queue ";
 						cpu.printQueue();
@@ -457,7 +457,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				}
 				else
 				{
-					if(time < 10000 || time > 70000)
+					if(time < 10000)
 					{
 						cout << "time " << time << "ms: " << "Process " << p->id << " (tau " << p->tau << "ms) arrived; added to ready queue ";
 						cpu.printQueue();
@@ -514,7 +514,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					int updateArrivalTime = time+(p->ioBurstTime)[p->step]+(t_cs/2);
 					p->nextArrivalTime = updateArrivalTime;
 
-					if(time < 10000 || time > 70000)
+					if(time < 10000)
 						cout<<"time "<<time<<"ms: Process "<<p->id<<" (tau " << p->tau << "ms) completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
 
 					// Print whether there is a single or multiple bursts left
@@ -522,7 +522,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 						cout << " burst to go ";
 					else if(time < 10000)
 						cout << " bursts to go ";
-					if(time < 10000 || time > 70000)
+					if(time < 10000)
 						cpu.printQueue();
 
 					// Recalculate tau once the burst is done
@@ -534,7 +534,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					}
 					p->tau = newTau; 
 
-					if(time < 10000 || time > 70000)
+					if(time < 10000)
 					{
 						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
 						cpu.printQueue();
