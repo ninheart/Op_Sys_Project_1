@@ -65,7 +65,7 @@ public:
 		}
 		else
 		{
-			for (int i = 0; i < processQueue.size(); ++i)
+			for (uint i = 0; i < processQueue.size(); ++i)
 			{
 				cout << ' '<< (processQueue[i]).id;
 			}

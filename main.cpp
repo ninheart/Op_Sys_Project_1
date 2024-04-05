@@ -52,7 +52,7 @@ void printQueue(std::vector<Process> &queue)
 		std::cout << " <empty>]" << std::endl;
 		return;
 	}
-	for (int i = 0; i < queue.size(); i++)
+	for (uint i = 0; i < queue.size(); i++)
 	{
 		std::cout << " " << queue[i].id;
 	}
@@ -101,7 +101,7 @@ string ceilTo3(double value){
 string cpuUtilization(int time, vector<Process> processes, int n){
 	double totalBurstTime = 0;
 	for(int i = 0; i < n; ++i){
-		for(int j = 0; j < processes[i].cpuBurstTime.size(); ++j){
+		for(uint j = 0; j < processes[i].cpuBurstTime.size(); ++j){
 			totalBurstTime += processes[i].cpuBurstTime[j];
 		}
 	}
@@ -136,7 +136,7 @@ string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
 			burstCount++;
 		}
 	}
-	return ceilTo3(avgBurst / burstCount) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
+	return ceilTo3(avgBurst / burstCount) + " ms (" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms/" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms)";
 }
 
 // calculates the average process wait time for a group of processes and returns it in the specified format as a String
@@ -168,7 +168,7 @@ string avgWaitTime(int time, vector<Process> processes, int n, int num_cpu)
 			burst++;
 		}
 	}
-	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
+	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms/" +ceilTo3(avgIOBoundBurst / ioBurst) +" ms)";
 }
 
 // calculates the average process turnaround time for a group of processes and reutrns it in the specified format as a String
@@ -215,18 +215,20 @@ string avgTurnaround(int time, vector<Process> processes, int n, int num_cpu, in
 	avgIOBoundBurst += ioCS * t_cs;
 	avgBurst += (ioCS + cpuCS) * t_cs;
 
-	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms/" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms)";
+	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms/" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms)";
 }
 
-void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
+void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &outputFile)
 {
 	sort(processes.begin(), processes.end(), compareArrivalTime);
 
 	int time = 0;
 	int alive = n;
-	double waitTime = 0;
+	double waitTime=0, count = 0;
 	double turnaroundTime = 0;
 	int contextSwtich = 0;
+	int cpuContextSwitch = 0;
+	int ioContextSwitch = 0;
 
 	CPU cpu;
 	cpu.context = 0;
@@ -254,6 +256,11 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 				cout << "Process " << temp->id << " started using the CPU for "<<temp->cpuBurstTime[temp->step]<<"ms burst ";
 				cpu.printQueue();
 				contextSwtich +=1;
+
+				if (temp->cpuBound)
+					cpuContextSwitch++;
+				else
+					ioContextSwitch++;
 			}
 			else
 			{
@@ -271,7 +278,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 			{
 				cpu.addProcess(*p);
 				p->inQueue = true;
-
+				p->turn = true;
 
 				if (p->inIO)
 				{
@@ -279,7 +286,6 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 					p->step++;
 					cout << "time " << time << "ms: ";
 					cout<<"Process "<< p->id <<" completed I/O; added to ready queue ";
-					// cout<<cpu.currentProcess->id<<endl;
 					cpu.printQueue();
 				}else{
 					cout << "time " << time << "ms: ";
@@ -296,6 +302,8 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 					p->inQueue = false;
 					p->swap = true;
 					waitTime += p->waitTime;
+					p->waitTimes.push_back(p->waitTime);
+					count++;
 					cpu.context += t_cs / 2;
 					cpu.switchingProcess = p;
 					p->cpuTime = 0;
@@ -312,6 +320,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 				// now check if the burst is done
 				if(p->cpuTime == p->cpuBurstTime[p->step]){
 
+					turnaroundTime += time - p->nextArrivalTime + t_cs/2; //turnaround time 
 					// cpu.currentProcess = NULL;
 					cpu.switchingProcess = p;
 					cpu.context += t_cs/2;
@@ -332,7 +341,6 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 					}
 
 					int updateArrivalTime=time+(p->ioBurstTime)[p->step]+(t_cs/2);
-					// p->step++;
 					p->nextArrivalTime = updateArrivalTime;
 
 					cout<<"time "<<time<<"ms: Process "<<p->id<<" completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
@@ -355,15 +363,21 @@ void FCFS(vector<Process> &processes, int n, int t_cs, ofstream &outputFile)
 		}
 		time++;
 	}
+
 	time = time + t_cs/2 -1;
 	cout << "time " << time << "ms: Simulator ended for FCFS ";
 	cpu.printQueue();
 
-	outputFile <<"Algorithm FCFS"<< std::endl;
-	outputFile <<"-- CPU utilization: "<<cpuUtilization(time,processes,n)<<"%"<< std::endl;
-	outputFile <<"-- average CPU burst time: "<< std::endl;
-	outputFile << std::endl;
 
+	outputFile << "Algorithm FCFS" << endl;
+	outputFile <<"-- CPU utilization: "<<cpuUtilization(time,processes,n)<<"%"<<endl;
+	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << endl;
+	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << endl;
+	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << endl;
+	outputFile << "-- number of context switches: " << contextSwtich << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
+	;
+	outputFile << "-- number of preemptions: 0 (0/0)"<<endl;
+	outputFile << endl;
 }
 
 // SJF algorithm
@@ -550,7 +564,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << std::endl;
 	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << std::endl;
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << std::endl;
-	outputFile << "-- number of context switches: " << contextSwitch << " (" << ioContextSwitch << "/" << cpuContextSwitch << ")" << std::endl;
+	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
 	outputFile << "-- number of preemptions: 0 (0/0)" << std::endl;
 }
 
@@ -595,7 +609,7 @@ int main(int argc, char *argv[])
 	{
 		Process p;
 
-		// initial parameters
+		// initial parameters`~
 		p.id = alphabets[i];
 		p.turnaroundTime = 0;
 		p.waitTime = 0;
@@ -604,10 +618,10 @@ int main(int argc, char *argv[])
 		p.tau = 1 / lambda;
 
 		// determine whether a process is CPU-bound (any process created with index below num_cpu)
-		if(i < num_cpu + 1)
-			p.cpuBound = true;
-		else
+		if (i < num_processes - num_cpu)
 			p.cpuBound = false;
+		else
+			p.cpuBound = true;
 
 		// burst generation per process
 		for (int j = 0; j < p.numCpuBursts; ++j)
@@ -675,13 +689,13 @@ int main(int argc, char *argv[])
 
 	// FCFS call & output
 	reset(processes, num_processes);
-	FCFS(processes, num_processes, t_cs, outputFile);
+	FCFS(processes, num_processes, t_cs, num_cpu, outputFile);
 	std::cout << std::endl;
 
 	// SJF call & output
 	reset(processes, num_processes);
 	SJF(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
-	std::cout << std::endl;
+	// std::cout << std::endl;
 
 	outputFile.close();
 
