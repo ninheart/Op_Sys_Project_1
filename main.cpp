@@ -274,6 +274,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 		{
 			Process *p = &(processes[i]);
 			// add process to queue
+
 			if (time == p->nextArrivalTime)
 			{
 				cpu.addProcess(*p);
@@ -334,8 +335,6 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 						alive--;
 						cout<<"time "<<time<<"ms: ";
 						cout<<"Process "<<p->id<<" terminated ";
-						cpu.printQueue();
-
 						cpu.currentProcess = NULL;
 						continue;
 					}
@@ -387,8 +386,6 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 
 	int time = 0;
 	int alive = n;
-	double waitTime = 0;
-	double turnaroundTime = 0;
 	int contextSwitch = 0;
 	int cpuContextSwitch = 0;
 	int ioContextSwitch = 0;
@@ -411,7 +408,6 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				temp->inCPU = true;
 				cpu.currentProcess = temp;
 				cpu.switchingProcess = NULL;
-				cpu.popFront();
 				temp->turnaroundTime += t_cs / 2 + 1;
 
 				// Count context switches
@@ -421,7 +417,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				else
 					ioContextSwitch++;
 
-				if(time < 10000)
+				if(time < 10000 || time > 70000)
 				{
 					cout<<"time "<<time<<"ms: " << "Process " << temp->id << " (tau " << temp->tau << "ms) started using the CPU for " << temp->cpuBurstTime[temp->step] <<"ms burst ";
 					cpu.printQueue();
@@ -438,37 +434,34 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 		for (int i = 0; i < n; i++)
 		{
 			Process *p = &(processes[i]);
+
 			// add process to queue
 			if (time == p->nextArrivalTime)
 			{
+				// add the process and sort it according to tau
 				cpu.addProcess(*p);
+				deque<Process>* q = cpu.getProcessQueue();
+				std::sort(q->begin(), q->end(), compareTau);
 				p->beginTime = time;
 				p->inQueue = true;
-				deque<Process>* q = cpu.getProcessQueue();
-				deque<Process> q2 = deque<Process>();
-				for(int i = 0; i < q->size(); i++)
-					q2.push_back(q->at(i));
+
 				if(p->inIO)
 				{
 					p->inIO = false;
 					p->step++;
-					if(time < 10000)
+					if(time < 10000 || time > 70000)
+					{
 						cout << "time " << time << "ms: " <<"Process "<< p->id <<" (tau " << p->tau << "ms) completed I/O; added to ready queue ";
-
-					// sort queue by tau
-					std::sort(q2.begin(), q2.end(), compareTau);
-					if(time < 10000)
 						cpu.printQueue();
+					}
 				}
 				else
 				{
-					if(time < 10000)
+					if(time < 10000 || time > 70000)
+					{
 						cout << "time " << time << "ms: " << "Process " << p->id << " (tau " << p->tau << "ms) arrived; added to ready queue ";
-
-					// sort queue by tau
-					std::sort(q2.begin(), q2.end(), compareTau);
-					if(time < 10000)
 						cpu.printQueue();
+					}
 				}
 			}
 
@@ -480,12 +473,12 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				{
 					p->inQueue = false;
 					p->swap = true;
-					waitTime += p->waitTime;
 					cpu.context += t_cs / 2;
 					cpu.switchingProcess = p;
 					p->cpuTime = 0;
 					p->waitTimes.push_back(p->waitTime);
 					p->waitTime = 0;
+					cpu.popFront();
 				}
 				else
 				{
@@ -521,7 +514,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					int updateArrivalTime = time+(p->ioBurstTime)[p->step]+(t_cs/2);
 					p->nextArrivalTime = updateArrivalTime;
 
-					if(time < 10000)
+					if(time < 10000 || time > 70000)
 						cout<<"time "<<time<<"ms: Process "<<p->id<<" (tau " << p->tau << "ms) completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
 
 					// Print whether there is a single or multiple bursts left
@@ -529,7 +522,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 						cout << " burst to go ";
 					else if(time < 10000)
 						cout << " bursts to go ";
-					if(time < 10000)
+					if(time < 10000 || time > 70000)
 						cpu.printQueue();
 
 					// Recalculate tau once the burst is done
@@ -541,7 +534,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					}
 					p->tau = newTau; 
 
-					if(time < 10000)
+					if(time < 10000 || time > 70000)
 					{
 						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
 						cpu.printQueue();
