@@ -817,7 +817,7 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					}
 					p->tau = newTau; 
 
-					if(time < 10000|| time > 10000)
+					if(time < 10000)
 					{
 						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
 						cpu.printQueue();
