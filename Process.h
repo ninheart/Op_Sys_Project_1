@@ -34,6 +34,7 @@ public:
     int turnaroundTime;
     int waitTime;
     int cpuTime;
+    int remainingTime;
     double tau;
 
     int step;
@@ -43,6 +44,7 @@ public:
     bool swap;
     bool turn;
     bool cpuBound;
+    bool preempt;
 
     vector<int> cpuBurstTime;
     vector<int> ioBurstTime;

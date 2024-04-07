@@ -224,9 +224,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 
 	int time = 0;
 	int alive = n;
-	double waitTime=0, count = 0;
-	double turnaroundTime = 0;
-	int contextSwtich = 0;
+	int contextSwitch = 0;
 	int cpuContextSwitch = 0;
 	int ioContextSwitch = 0;
 
@@ -255,7 +253,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 				cout<<"time "<<time<<"ms: ";
 				cout << "Process " << temp->id << " started using the CPU for "<<temp->cpuBurstTime[temp->step]<<"ms burst ";
 				cpu.printQueue();
-				contextSwtich +=1;
+				contextSwitch +=1;
 
 				if (temp->cpuBound)
 					cpuContextSwitch++;
@@ -302,9 +300,9 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 				{
 					p->inQueue = false;
 					p->swap = true;
-					waitTime += p->waitTime;
+					// waitTime += p->waitTime;
 					p->waitTimes.push_back(p->waitTime);
-					count++;
+					// count++;
 					cpu.context += t_cs / 2;
 					cpu.switchingProcess = p;
 					p->cpuTime = 0;
@@ -321,7 +319,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 				// now check if the burst is done
 				if(p->cpuTime == p->cpuBurstTime[p->step]){
 
-					turnaroundTime += time - p->nextArrivalTime + t_cs/2; //turnaround time 
+					// turnaroundTime += time - p->nextArrivalTime + t_cs/2; //turnaround time 
 					// cpu.currentProcess = NULL;
 					cpu.switchingProcess = p;
 					cpu.context += t_cs/2;
@@ -335,6 +333,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 						alive--;
 						cout<<"time "<<time<<"ms: ";
 						cout<<"Process "<<p->id<<" terminated ";
+						cpu.printQueue();
 						cpu.currentProcess = NULL;
 						continue;
 					}
@@ -373,7 +372,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << endl;
 	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << endl;
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << endl;
-	outputFile << "-- number of context switches: " << contextSwtich << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
+	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
 	;
 	outputFile << "-- number of preemptions: 0 (0/0)"<<endl;
 	outputFile << endl;
@@ -559,6 +558,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << std::endl;
 	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
 	outputFile << "-- number of preemptions: 0 (0/0)" << std::endl;
+	outputFile << endl;
 }
 
 // SRT algorithm
@@ -743,6 +743,233 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << std::endl;
 	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
 	outputFile << "-- number of preemptions: 0 (0/0)" << std::endl;
+	outputFile << endl;
+}
+
+void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, ofstream &outputFile){
+	sort(processes.begin(), processes.end(), compareArrivalTime);
+
+	int time = 0;
+	int alive = n;
+	double waitTime = 0, count = 0;
+	double turnaroundTime = 0;
+	int contextSwitch = 0;
+	int cpuContextSwitch = 0;
+	int ioContextSwitch = 0;
+	int preemption = 0;
+	int cpuPreemption = 0;
+	int ioPreemption = 0;
+
+	double cpuWaitTime = 0, ioWaitTime = 0, cpuWaitCount = 0, ioWaitCount = 0;
+
+
+	CPU cpu;
+	cpu.context = 0;
+	cout << "time " << time << "ms:"
+		 << " Simulator started for RR ";
+	cpu.printQueue();
+
+	while (alive > 0)
+	{
+
+		if (cpu.context > 0)
+			cpu.context--;
+
+		if (cpu.context == 0 && cpu.switchingProcess != NULL)
+		{
+			// cout<<frontProcess.preempt<<endl;
+			Process *temp = cpu.switchingProcess;
+			if (temp->swap)
+			{
+				temp->inCPU = true;
+				cpu.currentProcess = temp;
+				cpu.switchingProcess = NULL;
+
+				// cpu.popFront();
+
+				if(temp->remainingTime < temp->cpuBurstTime[temp->step]){
+					cout << "time " << time << "ms: ";
+					cout << "Process " << temp->id << " started using the CPU for remaining " << temp->remainingTime << "ms of " << temp->cpuBurstTime[temp->step] << "ms burst ";
+				}else{
+					cout << "time " << time << "ms: ";
+					cout << "Process " << temp->id << " started using the CPU for " << temp->cpuBurstTime[temp->step] << "ms burst ";
+				}
+				
+				cpu.printQueue();
+				contextSwitch += 1;
+
+
+				if (temp->cpuBound)
+					cpuContextSwitch++;
+				else
+					ioContextSwitch++;
+
+			}else if(temp->preempt){
+				temp->inQueue = true;
+				cpu.addProcess(*temp);
+				cpu.switchingProcess = NULL;
+			}
+			else
+			{
+				temp->inIO = true;
+				cpu.switchingProcess = NULL;
+				temp->turn = false;
+			}
+		}
+
+		// reorder queue based on io burst and id
+		for(int i = 0; i < n; ++i){
+			Process *p = &(processes[i]);
+			// vector<Process*> sameIOCompletion;
+			if(time == p->nextArrivalTime && p->inIO){
+				for(int j = i+1; j < n; ++j){
+					Process *pNext = &(processes[j]);
+					if(pNext->nextArrivalTime == p->nextArrivalTime && pNext->inIO){
+						swap(processes[i],processes[j]);
+					}else{
+						break;
+					}
+				}
+			}
+		}
+
+
+		for(int i = 0; i < n; i++){
+			Process* p = &(processes[i]);
+
+			if (time == p->nextArrivalTime && p->inIO)
+			{
+				cpu.addProcess(*p);
+				p->inQueue = true;
+				p->inIO = false;
+				p->step++;
+				cout << "time " << time << "ms: ";
+				cout << "Process " << p->id << " completed I/O; added to ready queue ";
+				cpu.printQueue();
+				p->remainingTime = p->cpuBurstTime[p->step];
+				p->turn = true;
+			}
+			
+			if(p->inCPU){
+				if((p->cpuTime != 0 && p->cpuTime % t_slice == 0) || p->cpuTime == p->remainingTime){
+					
+					if(p->cpuTime == p->remainingTime || cpu.getQueueSize()!=0){
+						cpu.currentProcess = NULL;
+						cpu.switchingProcess = p;
+						cpu.context += t_cs /2;
+						p->swap = false;
+						p->inCPU = false;
+					}
+
+					if(p->cpuTime == p->remainingTime){
+						if (p->cpuBound)
+						{
+							cpuWaitCount += 1;
+						}
+						else
+						{
+							ioWaitCount += 1;
+						}
+						count+=1;
+						p->preempt = false;
+
+						if(p->step == int(p->cpuBurstTime.size()-1)){
+							p->inQueue = false;
+							p->inIO = false;
+							alive--;
+							cout<<"time "<<time<<"ms: Process "<<p->id<<" terminated ";
+							cpu.printQueue();
+							continue;
+						}
+						int updateArrivalTime=time+(p->ioBurstTime)[p->step]+(t_cs/2);
+						p->nextArrivalTime = updateArrivalTime;
+
+						cout<<"time "<<time<<"ms: ";
+
+						if(p->cpuBurstTime.size() - p->step - 1 == 1){
+							
+							cout<<"Process "<<p->id<<" completed a CPU burst; 1 burst to go ";
+						}else{
+							cout<<"Process "<<p->id<<" completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1<<" bursts to go ";
+						}
+						cpu.printQueue();
+						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
+						cpu.printQueue();
+					}
+					else
+					{
+						p->remainingTime -= p->cpuTime;
+						p->cpuTime = 0;
+						if(cpu.getQueueSize() == 0){
+							p->preempt = false;
+							cout<<"time "<<time<<"ms: Time slice expired; no preemption because ready queue is empty ";
+							cpu.printQueue();
+
+						}else{
+							p->preempt = true;
+							if(p->cpuBound){
+								cpuPreemption += 1;
+							}else{
+								ioPreemption += 1;
+							}
+							preemption++;
+							cout<<"time "<<time<<"ms: Time slice expired; preempting process "<<p->id<<" with "<<p->remainingTime<<"ms remaining ";
+							cpu.printQueue();
+						}
+					}
+				}
+				p->cpuTime++;
+			}
+			if (time == p->nextArrivalTime && !p->inQueue && !p->inIO && !p->inCPU)
+			{
+				cpu.addProcess(*p);
+				p->inQueue = true;
+				cout << "time " << time << "ms: ";
+				cout << "Process " << p->id << " arrived; added to ready queue ";
+				cpu.printQueue();
+				p->remainingTime = p->cpuBurstTime[p->step];
+				p->turn = true;
+			}
+			
+			if (p->inQueue)
+			{
+				if(cpu.currentProcess == NULL && cpu.switchingProcess == NULL && *p == cpu.front()){
+					p->inQueue = false;
+					p->swap = true;
+					cpu.switchingProcess = p;
+					cpu.context += t_cs/2;
+					p->cpuTime = 0;
+					cpu.popFront();
+					if(p->cpuBound){
+						cpuWaitTime += p->waitTime;
+					}else{
+						ioWaitTime += p->waitTime;
+					}
+					waitTime += p->waitTime;
+					p->waitTimes.push_back(p->waitTime);
+					p->waitTime = 0;
+				}else{
+					p->waitTime+=1;
+				}
+
+			}
+		}
+		time++;
+	}
+
+	time = time + t_cs / 2 - 1;
+	cout << "time " << time << "ms: Simulator ended for RR ";
+	cpu.printQueue();
+
+	outputFile << "Algorithm RR" << endl;
+	outputFile << "-- CPU utilization: " << cpuUtilization(time, processes, n) << "%" << endl;
+	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << endl;
+	outputFile << "-- average wait time: " << ceilTo3(waitTime / count) <<" ms "<<"("<<ceilTo3(cpuWaitTime/cpuWaitCount)<<" ms/"<<ceilTo3(ioWaitTime/ioWaitCount)<<" ms)"<< endl;
+	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << endl;
+	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
+	;
+	outputFile << "-- number of preemptions: "<<preemption << " ("<<cpuPreemption<<"/"<<ioPreemption<<")"<< endl;
+	outputFile << endl;
 }
 
 int main(int argc, char *argv[])
@@ -878,6 +1105,8 @@ int main(int argc, char *argv[])
 	reset(processes, num_processes);
 	SRT(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
 
-	outputFile.close();
+	reset(processes, num_processes);
+	RR(processes, num_processes, t_cs, t_slice,  num_cpu, outputFile);
 
+	outputFile.close();
 }

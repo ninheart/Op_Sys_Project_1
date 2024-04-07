@@ -31,6 +31,8 @@ public:
 	// process to be switched into the CPU
 	Process *switchingProcess;
 
+
+
 	// context switch
 	int context;
 
@@ -38,6 +40,10 @@ public:
 	void addProcess(const Process &process)
 	{
 		processQueue.push_back(process);
+	}
+
+	Process *getFront(){
+		return &processQueue.front();
 	}
 
 	// return process at front of ready queue
