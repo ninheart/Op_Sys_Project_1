@@ -74,12 +74,14 @@ bool compareArrivalTime(const Process &p1, const Process &p2)
 	}
 }
 
-// compare two processes by least tau value (and if they are equal, by least ID)
+// compare two processes by least tau value (and if they are equal, by CPU time and then by least ID)
 bool compareTau(const Process &p1, const Process &p2)
 {
 	// Compare tau if not equal, otherwise the id
 	if(p1.tau != p2.tau)
 		return p1.tau < p2.tau;
+	else if(p1.cpuTime != p2.cpuTime)
+		return p1.cpuTime > p2.cpuTime;
 	else
 		return p1.id < p2.id;
 }
@@ -600,6 +602,8 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 	int cpuContextSwitch = 0;
 	int ioContextSwitch = 0;
 	int preemptions = 0;
+	int cpuPreemptions = 0;
+	int ioPreemptions = 0;
 
 	CPU cpu;
 	cpu.context = 0;
@@ -631,15 +635,16 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				else
 					ioContextSwitch++;
 
-				if(temp->remainingTime != temp->cpuBurstTime[temp->step] && (temp->remainingTime != 0 && temp->remainingTime != -1))
+				if(temp->remainingTime != temp->cpuBurstTime[temp->step] && (temp->remainingTime != 0 && temp->remainingTime != -1) && time < 10000)
 				{
-					cout << "time " << time << "ms: " << "Process " << temp->id << " started using the CPU for remaining " << temp->remainingTime << "ms of " << temp->cpuBurstTime[temp->step] << "ms burst ";
+					cout << "time " << time << "ms: " << "Process " << temp->id << " (tau " << temp->tau << "ms) " << "started using the CPU for remaining " << temp->remainingTime << "ms of " << temp->cpuBurstTime[temp->step] << "ms burst ";
+					cpu.printQueue();
 				}
-				else
+				else if(time < 10000)
 				{
-					cout << "time " << time << "ms: " << "Process " << temp->id << " started using the CPU for " << temp->cpuBurstTime[temp->step] << "ms burst ";
+					cout << "time " << time << "ms: " << "Process " << temp->id << " (tau " << temp->tau << "ms) " << "started using the CPU for " << temp->cpuBurstTime[temp->step] << "ms burst ";
+					cpu.printQueue();
 				}
-				cpu.printQueue();
 			}
 			else
 			{
@@ -672,12 +677,20 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					if(p->tau < (p2->tau - p2->cpuTime))
 					{
 						preemptions++;
+						if(p->cpuBound)
+							cpuPreemptions++;
+						else
+							ioPreemptions++;
 
 						Process* p2 = cpu.currentProcess;
 						cpu.context += t_cs;
 
-						std::cout << "time " << time << "ms: Process " << p->id << " (tau " << p->tau << "ms) completed I/O; preempting " << p2->id << " ";
-						cpu.printQueue();
+						if(time < 10000)
+						{
+							std::cout << "time " << time << "ms: Process " << p->id << " (tau " << p->tau << "ms) completed I/O; preempting " << p2->id << " ";
+							cpu.printQueue();
+						}
+						cpu.popFront();
 
 						cpu.addProcess(*p2);
 						deque<Process>* q = cpu.getProcessQueue();
@@ -693,7 +706,6 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 						p->step++;
 
 						cpu.switchingProcess = p;
-						cpu.popFront();
 
 						p->inQueue = false;
 						p->remainingTime = p->cpuBurstTime[p->step];
@@ -805,7 +817,7 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					}
 					p->tau = newTau; 
 
-					if(time < 10000)
+					if(time < 10000|| time > 10000)
 					{
 						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
 						cpu.printQueue();
@@ -837,7 +849,7 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << std::endl;
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << std::endl;
 	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
-	outputFile << "-- number of preemptions: " << preemptions << " (0/0)" << std::endl;
+	outputFile << "-- number of preemptions: " << preemptions << " (" << ioPreemptions << "/" << cpuPreemptions << ")" << std::endl;
 	outputFile << endl;
 }
 
@@ -1229,7 +1241,6 @@ int main(int argc, char *argv[])
 
 	// SRT call & output
 	reset(processes, num_processes);
-
 	SRT(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
 	std::cout << std::endl;
 
