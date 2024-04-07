@@ -305,7 +305,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 					if (time < 10000)
 					{
 						cout << "time " << time << "ms: ";
-						cout << "Process " << p->id << " completed I/O; added to ready queue ";
+						cout << "Process " << p->id << " arrived; added to ready queue ";
 						cpu.printQueue();
 					}
 				}
