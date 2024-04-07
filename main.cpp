@@ -120,7 +120,7 @@ string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
 	int ioBurst = 0;
 	for(int i = 0; i < n; i++)
 	{
-		for(int j = 0; j < processes[i].cpuBurstTime.size(); j++)
+		for(uint j = 0; j < processes[i].cpuBurstTime.size(); j++)
 		{
 			if(processes[i].cpuBound)
 			{
@@ -152,7 +152,7 @@ string avgWaitTime(int time, vector<Process> processes, int n, int num_cpu)
 	int cpuBurst = 0;
 	for(int i = 0; i < n; i++)
 	{
-		for(int j = 0; j < processes[i].waitTimes.size(); j++)
+		for(uint j = 0; j < processes[i].waitTimes.size(); j++)
 		{
 			if(processes[i].cpuBound)
 			{
@@ -172,7 +172,7 @@ string avgWaitTime(int time, vector<Process> processes, int n, int num_cpu)
 }
 
 // calculates the average process turnaround time for a group of processes and reutrns it in the specified format as a String
-string avgTurnaround(int time, vector<Process> processes, int n, int num_cpu, int cpuCS, int ioCS, double t_cs)
+string avgTurnaround(int time, vector<Process>& processes, int n, int num_cpu, int cpuCS, int ioCS, double t_cs)
 {
 	// Turnaround formula
 	// = 1/2 in context switch + 1/2 out context switch + wait time + burst time
@@ -188,27 +188,34 @@ string avgTurnaround(int time, vector<Process> processes, int n, int num_cpu, in
 	int cpuBurst = 0;
 
 	// Add wait time and burst time
-	for(int i = 0; i < n; i++)
+	for (int i = 0; i < n; i++)
 	{
-		for(int j = 0; j < processes[i].waitTimes.size(); j++)
+		for(uint j = 0; j < processes[i].waitTimes.size(); j++)
 		{
-			if(processes[i].cpuBound)
+			if (j < processes[i].cpuBurstTime.size())
 			{
-				avgCPUBoundBurst += processes[i].waitTimes[j];
-				avgCPUBoundBurst += processes[i].cpuBurstTime[j];
-				cpuBurst++;
+
+				if (processes[i].cpuBound)
+				{
+					avgCPUBoundBurst += processes[i].waitTimes[j];
+					avgCPUBoundBurst += processes[i].cpuBurstTime[j];
+					cpuBurst++;
+				}
+				else
+				{
+					avgIOBoundBurst += processes[i].waitTimes[j];
+					avgIOBoundBurst += processes[i].cpuBurstTime[j];
+					ioBurst++;
+				}
+
+				avgBurst += processes[i].waitTimes[j];
+				avgBurst += processes[i].cpuBurstTime[j];
+				burst++;
+				
 			}
-			else
-			{
-				avgIOBoundBurst += processes[i].waitTimes[j];
-				avgIOBoundBurst += processes[i].cpuBurstTime[j];
-				ioBurst++;
-			}
-			avgBurst += processes[i].waitTimes[j];
-			avgBurst += processes[i].cpuBurstTime[j];
-			burst++;
 		}
 	}
+
 
 	// Add in # of switches
 	avgCPUBoundBurst += cpuCS * t_cs;
@@ -250,9 +257,13 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 				cpu.switchingProcess = NULL;
 				cpu.popFront();
 
-				cout<<"time "<<time<<"ms: ";
-				cout << "Process " << temp->id << " started using the CPU for "<<temp->cpuBurstTime[temp->step]<<"ms burst ";
-				cpu.printQueue();
+				if (time < 10000)
+				{
+					cout << "time " << time << "ms: ";
+					cout << "Process " << temp->id << " started using the CPU for " << temp->cpuBurstTime[temp->step] << "ms burst ";
+					cpu.printQueue();
+				}
+
 				contextSwitch +=1;
 
 				if (temp->cpuBound)
@@ -283,13 +294,20 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 				{
 					p->inIO = false;
 					p->step++;
-					cout << "time " << time << "ms: ";
-					cout<<"Process "<< p->id <<" completed I/O; added to ready queue ";
-					cpu.printQueue();
+					if (time < 10000)
+					{
+						cout << "time " << time << "ms: ";
+						cout << "Process " << p->id << " completed I/O; added to ready queue ";
+						cpu.printQueue();
+					}
+
 				}else{
-					cout << "time " << time << "ms: ";
-					cout << "Process " << p->id << " arrived; added to ready queue ";
-					cpu.printQueue();
+					if (time < 10000)
+					{
+						cout << "time " << time << "ms: ";
+						cout << "Process " << p->id << " completed I/O; added to ready queue ";
+						cpu.printQueue();
+					}
 				}
 			}
 
@@ -341,17 +359,27 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 					int updateArrivalTime=time+(p->ioBurstTime)[p->step]+(t_cs/2);
 					p->nextArrivalTime = updateArrivalTime;
 
-					cout<<"time "<<time<<"ms: Process "<<p->id<<" completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
-					if (p->cpuBurstTime.size() - p->step - 1 == 1){
-						cout << " burst to go ";
-					}else{
-						cout << " bursts to go ";
-					}
-						
-					cpu.printQueue();
+					if(time < 10000){
+						cout << "time " << time << "ms: Process " << p->id << " completed a CPU burst; " << p->cpuBurstTime.size() - p->step - 1;
+						if (p->cpuBurstTime.size() - p->step - 1 == 1)
+						{
+							cout << " burst to go ";
+						}
+						else
+						{
+							cout << " bursts to go ";
+						}
 
-					cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime<<"ms ";
-					cpu.printQueue();
+						cpu.printQueue();
+					}
+
+					if (time < 10000)
+					{
+						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
+						cpu.printQueue();
+					}
+					// cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime<<"ms ";
+					// cpu.printQueue();
 
 					// switch out process
 					cpu.currentProcess = NULL;
@@ -786,16 +814,20 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 				cpu.switchingProcess = NULL;
 
 				// cpu.popFront();
-
-				if(temp->remainingTime < temp->cpuBurstTime[temp->step]){
-					cout << "time " << time << "ms: ";
-					cout << "Process " << temp->id << " started using the CPU for remaining " << temp->remainingTime << "ms of " << temp->cpuBurstTime[temp->step] << "ms burst ";
-				}else{
-					cout << "time " << time << "ms: ";
-					cout << "Process " << temp->id << " started using the CPU for " << temp->cpuBurstTime[temp->step] << "ms burst ";
+				if(time < 10000){
+					if (temp->remainingTime < temp->cpuBurstTime[temp->step])
+					{
+						cout << "time " << time << "ms: ";
+						cout << "Process " << temp->id << " started using the CPU for remaining " << temp->remainingTime << "ms of " << temp->cpuBurstTime[temp->step] << "ms burst ";
+					}
+					else
+					{
+						cout << "time " << time << "ms: ";
+						cout << "Process " << temp->id << " started using the CPU for " << temp->cpuBurstTime[temp->step] << "ms burst ";
+					}
+					cpu.printQueue();
 				}
 				
-				cpu.printQueue();
 				contextSwitch += 1;
 
 
@@ -843,13 +875,57 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 				p->inQueue = true;
 				p->inIO = false;
 				p->step++;
-				cout << "time " << time << "ms: ";
-				cout << "Process " << p->id << " completed I/O; added to ready queue ";
-				cpu.printQueue();
+				if(time < 10000){
+					cout << "time " << time << "ms: ";
+					cout << "Process " << p->id << " completed I/O; added to ready queue ";
+					cpu.printQueue();
+				}
 				p->remainingTime = p->cpuBurstTime[p->step];
 				p->turn = true;
 			}
-			
+			if (time == p->nextArrivalTime && !p->inQueue && !p->inIO && !p->inCPU)
+			{
+				cpu.addProcess(*p);
+				p->inQueue = true;
+				if (time < 10000)
+				{
+					cout << "time " << time << "ms: ";
+					cout << "Process " << p->id << " arrived; added to ready queue ";
+					cpu.printQueue();
+				}
+				p->remainingTime = p->cpuBurstTime[p->step];
+				p->turn = true;
+			}
+
+			if (p->inQueue)
+			{
+				if (cpu.currentProcess == NULL && cpu.switchingProcess == NULL && *p == cpu.front())
+				{
+					p->inQueue = false;
+					p->swap = true;
+					cpu.switchingProcess = p;
+					cpu.context += t_cs / 2;
+					p->cpuTime = 0;
+					cpu.popFront();
+					if (p->cpuBound)
+					{
+						cpuWaitTime += p->waitTime;
+					}
+					else
+					{
+						ioWaitTime += p->waitTime;
+					}
+
+					p->waitTimes.push_back(p->waitTime);
+					waitTime += p->waitTime;
+					p->waitTime = 0;
+				}
+				else
+				{
+					p->waitTime += 1;
+				}
+			}
+
 			if(p->inCPU){
 				if((p->cpuTime != 0 && p->cpuTime % t_slice == 0) || p->cpuTime == p->remainingTime){
 					
@@ -876,6 +952,7 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 						if(p->step == int(p->cpuBurstTime.size()-1)){
 							p->inQueue = false;
 							p->inIO = false;
+							p->completionTime = time;
 							alive--;
 							cout<<"time "<<time<<"ms: Process "<<p->id<<" terminated ";
 							cpu.printQueue();
@@ -884,17 +961,21 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 						int updateArrivalTime=time+(p->ioBurstTime)[p->step]+(t_cs/2);
 						p->nextArrivalTime = updateArrivalTime;
 
-						cout<<"time "<<time<<"ms: ";
+						if(time < 10000){
+							cout << "time " << time << "ms: ";
+							if (p->cpuBurstTime.size() - p->step - 1 == 1)
+							{
 
-						if(p->cpuBurstTime.size() - p->step - 1 == 1){
-							
-							cout<<"Process "<<p->id<<" completed a CPU burst; 1 burst to go ";
-						}else{
-							cout<<"Process "<<p->id<<" completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1<<" bursts to go ";
+								cout << "Process " << p->id << " completed a CPU burst; 1 burst to go ";
+							}
+							else
+							{
+								cout << "Process " << p->id << " completed a CPU burst; " << p->cpuBurstTime.size() - p->step - 1 << " bursts to go ";
+							}
+							cpu.printQueue();
+							cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
+							cpu.printQueue();
 						}
-						cpu.printQueue();
-						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
-						cpu.printQueue();
 					}
 					else
 					{
@@ -902,8 +983,10 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 						p->cpuTime = 0;
 						if(cpu.getQueueSize() == 0){
 							p->preempt = false;
-							cout<<"time "<<time<<"ms: Time slice expired; no preemption because ready queue is empty ";
-							cpu.printQueue();
+							if(time < 10000){
+								cout<<"time "<<time<<"ms: Time slice expired; no preemption because ready queue is empty ";
+								cpu.printQueue();
+							}
 
 						}else{
 							p->preempt = true;
@@ -913,53 +996,26 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 								ioPreemption += 1;
 							}
 							preemption++;
-							cout<<"time "<<time<<"ms: Time slice expired; preempting process "<<p->id<<" with "<<p->remainingTime<<"ms remaining ";
-							cpu.printQueue();
+							if(time < 10000){
+								cout<<"time "<<time<<"ms: Time slice expired; preempting process "<<p->id<<" with "<<p->remainingTime<<"ms remaining ";
+								cpu.printQueue();
+							}
 						}
 					}
 				}
 				p->cpuTime++;
 			}
-			if (time == p->nextArrivalTime && !p->inQueue && !p->inIO && !p->inCPU)
-			{
-				cpu.addProcess(*p);
-				p->inQueue = true;
-				cout << "time " << time << "ms: ";
-				cout << "Process " << p->id << " arrived; added to ready queue ";
-				cpu.printQueue();
-				p->remainingTime = p->cpuBurstTime[p->step];
-				p->turn = true;
-			}
-			
-			if (p->inQueue)
-			{
-				if(cpu.currentProcess == NULL && cpu.switchingProcess == NULL && *p == cpu.front()){
-					p->inQueue = false;
-					p->swap = true;
-					cpu.switchingProcess = p;
-					cpu.context += t_cs/2;
-					p->cpuTime = 0;
-					cpu.popFront();
-					if(p->cpuBound){
-						cpuWaitTime += p->waitTime;
-					}else{
-						ioWaitTime += p->waitTime;
-					}
-					waitTime += p->waitTime;
-					p->waitTimes.push_back(p->waitTime);
-					p->waitTime = 0;
-				}else{
-					p->waitTime+=1;
-				}
-
-			}
 		}
 		time++;
 	}
 
+
 	time = time + t_cs / 2 - 1;
 	cout << "time " << time << "ms: Simulator ended for RR ";
 	cpu.printQueue();
+
+
+	// cout << t_cs << endl;
 
 	outputFile << "Algorithm RR" << endl;
 	outputFile << "-- CPU utilization: " << cpuUtilization(time, processes, n) << "%" << endl;
@@ -1096,14 +1152,15 @@ int main(int argc, char *argv[])
 	FCFS(processes, num_processes, t_cs, num_cpu, outputFile);
 	std::cout << std::endl;
 
-	// SJF call & output
+	// // SJF call & output
 	reset(processes, num_processes);
 	SJF(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
 	std::cout << std::endl;
 
-	// SRT call & output
+	// // SRT call & output
 	reset(processes, num_processes);
 	SRT(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
+	std::cout << std::endl;
 
 	reset(processes, num_processes);
 	RR(processes, num_processes, t_cs, t_slice,  num_cpu, outputFile);
