@@ -25,12 +25,17 @@ public:
         this->inIO = false;
         this->swap = true;
         this->turn = false;
+        this->processed = false;
     }
     char id;
     int arrivalTime;
     int nextArrivalTime;
+    int timeLeft;
     int beginTime;
     int numCpuBursts;
+
+
+    // temporary metrics
     int turnaroundTime;
     int waitTime;
     int cpuTime;
@@ -45,7 +50,9 @@ public:
     bool turn;
     bool cpuBound;
     bool preempt;
+    bool processed;
 
+    // metric tracking
     vector<int> cpuBurstTime;
     vector<int> ioBurstTime;
     vector<int> waitTimes;
@@ -59,7 +66,9 @@ public:
         this->inIO = false;
         this->swap = true;
         this->turn = false;
+        this->processed = false;
         this->nextArrivalTime = this->arrivalTime;
+        timeLeft = cpuBurstTime[step];
         waitTimes.clear();
     };
 
