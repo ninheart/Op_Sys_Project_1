@@ -883,48 +883,7 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 				p->remainingTime = p->cpuBurstTime[p->step];
 				p->turn = true;
 			}
-			if (time == p->nextArrivalTime && !p->inQueue && !p->inIO && !p->inCPU)
-			{
-				cpu.addProcess(*p);
-				p->inQueue = true;
-				if (time < 10000)
-				{
-					cout << "time " << time << "ms: ";
-					cout << "Process " << p->id << " arrived; added to ready queue ";
-					cpu.printQueue();
-				}
-				p->remainingTime = p->cpuBurstTime[p->step];
-				p->turn = true;
-			}
 
-			if (p->inQueue)
-			{
-				if (cpu.currentProcess == NULL && cpu.switchingProcess == NULL && *p == cpu.front())
-				{
-					p->inQueue = false;
-					p->swap = true;
-					cpu.switchingProcess = p;
-					cpu.context += t_cs / 2;
-					p->cpuTime = 0;
-					cpu.popFront();
-					if (p->cpuBound)
-					{
-						cpuWaitTime += p->waitTime;
-					}
-					else
-					{
-						ioWaitTime += p->waitTime;
-					}
-
-					p->waitTimes.push_back(p->waitTime);
-					waitTime += p->waitTime;
-					p->waitTime = 0;
-				}
-				else
-				{
-					p->waitTime += 1;
-				}
-			}
 
 			if(p->inCPU){
 				if((p->cpuTime != 0 && p->cpuTime % t_slice == 0) || p->cpuTime == p->remainingTime){
@@ -952,7 +911,6 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 						if(p->step == int(p->cpuBurstTime.size()-1)){
 							p->inQueue = false;
 							p->inIO = false;
-							p->completionTime = time;
 							alive--;
 							cout<<"time "<<time<<"ms: Process "<<p->id<<" terminated ";
 							cpu.printQueue();
@@ -1004,6 +962,48 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 					}
 				}
 				p->cpuTime++;
+			}
+			if (time == p->nextArrivalTime && !p->inQueue && !p->inIO && !p->inCPU)
+			{
+				cpu.addProcess(*p);
+				p->inQueue = true;
+				if (time < 10000)
+				{
+					cout << "time " << time << "ms: ";
+					cout << "Process " << p->id << " arrived; added to ready queue ";
+					cpu.printQueue();
+				}
+				p->remainingTime = p->cpuBurstTime[p->step];
+				p->turn = true;
+			}
+
+			if (p->inQueue)
+			{
+				if (cpu.currentProcess == NULL && cpu.switchingProcess == NULL && *p == cpu.front())
+				{
+					p->inQueue = false;
+					p->swap = true;
+					cpu.switchingProcess = p;
+					cpu.context += t_cs / 2;
+					p->cpuTime = 0;
+					cpu.popFront();
+					if (p->cpuBound)
+					{
+						cpuWaitTime += p->waitTime;
+					}
+					else
+					{
+						ioWaitTime += p->waitTime;
+					}
+
+					p->waitTimes.push_back(p->waitTime);
+					waitTime += p->waitTime;
+					p->waitTime = 0;
+				}
+				else
+				{
+					p->waitTime += 1;
+				}
 			}
 		}
 		time++;
@@ -1158,7 +1158,7 @@ int main(int argc, char *argv[])
 	std::cout << std::endl;
 
 	// // SRT call & output
-	reset(processes, num_processes);
+	reset(processes, num_processes );
 	SRT(processes, num_processes, t_cs, alpha, num_cpu, outputFile);
 	std::cout << std::endl;
 
