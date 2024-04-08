@@ -1,32 +1,32 @@
 Algorithm FCFS
--- CPU utilization: 84.253%
--- average CPU burst time: 3067.776 ms (4071.000 ms/992.138 ms)
--- average wait time: 779.663 ms (217.284 ms/1943.207 ms)
--- average turnaround time: 3851.439 ms (4292.284 ms/2939.345 ms)
--- number of context switches: 89 (60/29)
+-- CPU utilization: 73.828%
+-- average CPU burst time: 2694.902 ms (3480.735 ms/632.090 ms)
+-- average wait time: 8874.833 ms (9018.783 ms/8496.965 ms)
+-- average turnaround time: 11575.734 ms (12505.518 ms/9135.054 ms)
+-- number of context switches: 203 (147/56)
 -- number of preemptions: 0 (0/0)
 
 Algorithm SJF
--- CPU utilization: 84.062%
--- average CPU burst time: 3067.776 ms (4071.000 ms/992.138 ms)
--- average wait time: 804.540 ms (229.584 ms/1994.104 ms)
--- average turnaround time: 3876.315 ms (4304.584 ms/2990.242 ms)
--- number of context switches: 89 (60/29)
+-- CPU utilization: 90.897%
+-- average CPU burst time: 2694.902 ms (3480.735 ms/632.090 ms)
+-- average wait time: 7087.257 ms (8387.497 ms/3674.125 ms)
+-- average turnaround time: 9788.158 ms (11874.232 ms/4312.215 ms)
+-- number of context switches: 203 (147/56)
 -- number of preemptions: 0 (0/0)
 
 Algorithm SRT
--- CPU utilization: 83.112%
--- average CPU burst time: 3067.776 ms (4071.000 ms/992.138 ms)
--- average wait time: 487.768 ms (249.400 ms/1063.138 ms)
--- average turnaround time: 3614.798 ms (4366.634 ms/2059.276 ms)
--- number of context switches: 99 (70/29)
--- number of preemptions: 10 (10/0)
+-- CPU utilization: 96.014%
+-- average CPU burst time: 2694.902 ms (3480.735 ms/632.090 ms)
+-- average wait time: 4218.238 ms (4842.707 ms/1551.017 ms)
+-- average turnaround time: 7773.656 ms (9892.109 ms/2212.715 ms)
+-- number of context switches: 311 (252/59)
+-- number of preemptions: 104 (35/68)
 
 Algorithm RR
--- CPU utilization: 81.436%
--- average CPU burst time: 3067.776 ms (4071.000 ms/992.138 ms)
--- average wait time: 588.686 ms (398.067 ms/983.069 ms)
--- average turnaround time: 3668.225 ms (4479.117 ms/inf ms)
--- number of context switches: 262 (151/111)
--- number of preemptions: 173 (91/82)
+-- CPU utilization: 94.510%
+-- average CPU burst time: 2694.902 ms (3480.735 ms/632.090 ms)
+-- average wait time: 7690.547 ms (9551.620 ms/2805.233 ms)
+-- average turnaround time: 10509.941 ms (9552.700 ms/957.242 ms)
+-- number of context switches: 4212 (3907/305)
+-- number of preemptions: 4009 (3760/249)
 

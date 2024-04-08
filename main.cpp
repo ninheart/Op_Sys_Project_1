@@ -254,7 +254,7 @@ string avgTurnaround(int time, vector<Process>& processes, int n, int num_cpu, i
 	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms/" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms)";
 }
 
-vector<double> preemptionTurnaroundTime(double turnaroundTime, vector<Process> &processes, int n, int cpuTurnaroundTime, int ioTurnaroundTime)
+vector<double> preemptionTurnaroundTime(double turnaroundTime, vector<Process> &processes, int n, int cpuTurnaroundTime, int ioTurnaroundTime, int t_cs)
 {
 	vector<double> ans;
 
@@ -274,7 +274,7 @@ vector<double> preemptionTurnaroundTime(double turnaroundTime, vector<Process> &
 			{
 				ioTurnaroundTime+= p->turnaroundTime;
 			}
-			turnaroundTime += p->turnaroundTime;
+			turnaroundTime+= p->turnaroundTime;
 			p->turnaroundTime = 0;
 		}
 	}
@@ -1267,7 +1267,7 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 		}
 		vector<double> turnarounds;
 
-		turnarounds = preemptionTurnaroundTime(turnaroundTime, processes, n, cpuTurnaroundTime, ioTurnaroundTime);
+		turnarounds = preemptionTurnaroundTime(turnaroundTime, processes, n, cpuTurnaroundTime, ioTurnaroundTime, t_cs);
 		turnaroundTime = turnarounds[0];
 		cpuTurnaroundTime = turnarounds[1];
 		ioTurnaroundTime = turnarounds[2];
@@ -1283,13 +1283,16 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 		{
 			if(p->cpuBound){
 				cpuTurnaroundTime += p->turnaroundTime;
-				cpuBursts += p->cpuBurstTime.size();
+				cpuTurnaroundTime += t_cs / 2 - 1;
 			}else{
 				ioTurnaroundTime += p->turnaroundTime;
-				ioBursts += p->cpuBurstTime.size();
 			}
 			turnaroundTime += p->turnaroundTime;
+			turnaroundTime += t_cs/2 -1;
 		}
+		cpuBursts += p->cpuBurstTime.size();
+
+		ioBursts += p->cpuBurstTime.size();
 
 		bursts += p->cpuBurstTime.size();
 	}
@@ -1301,12 +1304,11 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 	// More specifically, this is measured from process arrival time through to when the CPU burst is completed and the process is switched out of the CPU. Therefore, this measure includes the second half of the initial context switch in and the first half of the final context switch out, as well as any other context switches that occur while the CPU burst is being completed (i.e., due to preemptions).
 
 
+
 	time = time + t_cs / 2 - 1;
 	cout << "time " << time << "ms: Simulator ended for RR ";
 	cpu.printQueue();
 
-
-	// cout << t_cs << endl;
 
 	outputFile << "Algorithm RR" << endl;
 	outputFile << "-- CPU utilization: " << cpuUtilization(time, processes, n) << "%" << endl;
@@ -1424,6 +1426,7 @@ int main(int argc, char *argv[])
 	std::cout << std::endl;
 
 	// output part 2 information
+	std::cout << std::setprecision(2) << std::fixed;
 	cout << "<<< PROJECT PART II -- t_cs=" << t_cs << "ms; alpha=" << alpha << "; t_slice=" << t_slice << "ms >>>" << endl; 
 
 	string outputFileName = "simout.txt";
@@ -1458,6 +1461,7 @@ int main(int argc, char *argv[])
 
 	reset(processes, num_processes);
 	RR(processes, num_processes, t_cs, t_slice,  num_cpu, outputFile);
+	cout<<endl;
 
 	outputFile.close();
 }
