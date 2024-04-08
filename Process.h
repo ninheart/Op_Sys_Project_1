@@ -20,6 +20,7 @@ public:
         this->waitTime = 0;
         this->cpuTime = 0;
         this->step = 0;
+        this->turnaroundTime = 0;
         this->inCPU =false;
         this->inQueue = false;
         this->inIO = false;
@@ -68,6 +69,7 @@ public:
         this->turn = false;
         this->processed = false;
         this->nextArrivalTime = this->arrivalTime;
+        this->turnaroundTime = 0;
         timeLeft = cpuBurstTime[step];
         waitTimes.clear();
     };
