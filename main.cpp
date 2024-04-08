@@ -110,7 +110,12 @@ string cpuUtilization(int time, vector<Process> processes, int n){
 			totalBurstTime += processes[i].cpuBurstTime[j];
 		}
 	}
-	return ceilTo3(totalBurstTime / time * 100);
+	string total;
+	if(time == 0)
+		total = ceilTo3(0);
+	else
+		total = ceilTo3(totalBurstTime / time * 100);
+	return total;
 }
 
 // calculates the average CPU burst time for a group of processes and returns it in the specified format as a String
@@ -141,7 +146,26 @@ string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
 			burstCount++;
 		}
 	}
-	return ceilTo3(avgBurst / burstCount) + " ms (" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms/" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms)";
+	string avgAvg;
+	string cpuAvg;
+	string ioAvg;
+
+	if(ioBurst == 0)
+		ioAvg = ceilTo3(0);
+	else
+		ioAvg = ceilTo3(avgIOBoundBurst / ioBurst);
+
+	if(cpuBurst == 0)
+		cpuAvg = ceilTo3(0);
+	else
+		cpuAvg = ceilTo3(avgCPUBoundBurst / cpuBurst);
+
+	if(burstCount == 0)
+		avgAvg = ceilTo3(0);
+	else
+		avgAvg = ceilTo3(avgBurst / burstCount);
+
+	return avgAvg + " ms (" + cpuAvg + " ms/" + ioAvg + " ms)";
 }
 
 // calculates the average process wait time for a group of processes and returns it in the specified format as a String
@@ -638,7 +662,7 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 	int cpuPreemptions = 0;
 	int ioPreemptions = 0;
 	bool willPreempt = false;
-	bool print = true;
+	bool print = false;
 
 	CPU cpu;
 	cpu.context = 0;
@@ -670,7 +694,7 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				else
 					ioContextSwitch++;
 
-				if(temp->remainingTime != temp->cpuBurstTime[temp->step] && (temp->remainingTime != 0 || temp->remainingTime != -1) && time < 10000 || print)
+				if(temp->remainingTime != temp->cpuBurstTime[temp->step] && (temp->remainingTime != 0 && temp->remainingTime != -1) && (time < 10000 || print))
 				{
 					cout << "time " << time << "ms: " << "Process " << temp->id << " (tau " << temp->tau << "ms) " << "started using the CPU for remaining " << temp->remainingTime << "ms of " << temp->cpuBurstTime[temp->step] << "ms burst ";
 					cpu.printQueue();
@@ -951,7 +975,7 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 						cout<<"time "<<time<<"ms: Process "<<processes[i].id<<" (tau " << processes[i].tau << "ms) completed a CPU burst; "<<processes[i].cpuBurstTime.size()-processes[i].step-1;
 
 					// Print whether there is a single or multiple bursts left
-					if(processes[i].cpuBurstTime.size() - processes[i].step - 1 == 1 && time < 10000 || print)
+					if(processes[i].cpuBurstTime.size() - processes[i].step - 1 == 1 && (time < 10000 || print))
 						cout << " burst to go ";
 					else if(time < 10000)
 						cout << " bursts to go ";
