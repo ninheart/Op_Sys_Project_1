@@ -582,6 +582,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					cpu.context += t_cs/2;
 					p->swap = false;
 					p->inCPU = false;
+					p->cpuTime = 0;
 
 					if(p->step == int(p->cpuBurstTime.size()-1)){
 						p->inQueue = false;
@@ -628,9 +629,11 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 
 					// Switch out the process
 					cpu.currentProcess = NULL;
+					goto cpuSkipSJF;
 				}
 				p->cpuTime++;
 			}
+			cpuSkipSJF:;
 		}
 		time++;
 	}
