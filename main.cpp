@@ -77,13 +77,16 @@ bool compareArrivalTime(const Process &p1, const Process &p2)
 // compare two processes by least tau value (and if they are equal, by CPU time and then by least ID)
 bool compareTau(const Process &p1, const Process &p2)
 {
+	//std::cout << p1.id << p1.preempt << "  " << p1.beginTime << "  " << p2.id << p2.preempt << "  " << p2.beginTime << std::endl;
 	// Compare tau if not equal, otherwise the id
 	if(p1.tau != p2.tau)
-		return p1.tau < p2.tau;
-	else if(p1.cpuTime != p2.cpuTime)
-		return p1.cpuTime > p2.cpuTime;
+	{
+		return (p1.tau - p1.cpuTime) < (p2.tau - p2.cpuTime);
+	}
 	else
+	{
 		return p1.id < p2.id;
+	}
 }
 
 // compare two processes by least lexicographical order
@@ -634,6 +637,8 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 	int preemptions = 0;
 	int cpuPreemptions = 0;
 	int ioPreemptions = 0;
+	bool willPreempt = false;
+	bool print = true;
 
 	CPU cpu;
 	cpu.context = 0;
@@ -665,12 +670,12 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 				else
 					ioContextSwitch++;
 
-				if(temp->remainingTime != temp->cpuBurstTime[temp->step] && (temp->remainingTime != 0 && temp->remainingTime != -1) && time < 10000)
+				if(temp->remainingTime != temp->cpuBurstTime[temp->step] && (temp->remainingTime != 0 || temp->remainingTime != -1) && time < 10000 || print)
 				{
 					cout << "time " << time << "ms: " << "Process " << temp->id << " (tau " << temp->tau << "ms) " << "started using the CPU for remaining " << temp->remainingTime << "ms of " << temp->cpuBurstTime[temp->step] << "ms burst ";
 					cpu.printQueue();
 				}
-				else if(time < 10000)
+				else if(time < 10000 || print)
 				{
 					cout << "time " << time << "ms: " << "Process " << temp->id << " (tau " << temp->tau << "ms) " << "started using the CPU for " << temp->cpuBurstTime[temp->step] << "ms burst ";
 					cpu.printQueue();
@@ -684,86 +689,200 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 			}
 		}
 
-		// process specific updates at every tick
-		for (int i = 0; i < n; i++)
+		// add when context is not 0
+		for(int i = 0; i < n; i++)
 		{
-			Process *p = &(processes[i]);
-			p->processed = true;
-
-			// add process to queue
-			if(time == p->nextArrivalTime)
+			Process* p2 = cpu.currentProcess;
+			if(time == processes[i].nextArrivalTime && !(cpu.currentProcess != NULL && cpu.context == 0 && processes[i].tau < (p2->tau - p2->cpuTime)))
 			{
-				// add the process and sort it according to tau
-				cpu.addProcess(*p);
+				processes[i].beginTime = time;
+				processes[i].inQueue = true;
+
+				cpu.addProcess(processes[i]);
 				deque<Process>* q = cpu.getProcessQueue();
 				std::sort(q->begin(), q->end(), compareTau);
-				p->beginTime = time;
-				p->inQueue = true;
 
-				// preempt
-				if(cpu.currentProcess != NULL && cpu.context == 0)
+				// rectify preempt flag
+				processes[i].preempt = false;
+
+				// normal add operation (completed IO or initial arrival)
+				if(processes[i].inIO)
 				{
-					Process* p2 = cpu.currentProcess;
-					if(p->tau < (p2->tau - p2->cpuTime))
+					processes[i].inIO = false;
+					processes[i].step++;
+					if(time < 10000 || print)
 					{
+						cout << "time " << time << "ms: " <<"Process "<< processes[i].id <<" (tau " << processes[i].tau << "ms) completed I/O; added to ready queue ";
+						cpu.printQueue();
+					}
+				}
+				else
+				{
+					if(time < 10000 || print)
+					{
+						cout << "time " << time << "ms: " << "Process " << processes[i].id << " (tau " << processes[i].tau << "ms) arrived; added to ready queue ";
+						cpu.printQueue();
+					}
+				}
+			}
+
+			if(time == processes[i].nextArrivalTime && cpu.currentProcess != NULL && processes[i].tau < (p2->tau - p2->cpuTime))
+			{
+				if(cpu.context != 0)
+				{
+					willPreempt = true;
+				}
+			}
+
+			if(willPreempt && cpu.context == 0)
+			{
+				willPreempt = false;
+				preemptions++;
+
+				// add the process and sort it according to tau
+				processes[i].beginTime = time;
+				processes[i].inQueue = true;
+
+				processes[i].preempt = true;
+				processes[i].step++;
+				processes[i].inQueue = false;
+				processes[i].remainingTime = processes[i].cpuBurstTime[processes[i].step];
+				processes[i].cpuTime = 0;
+				processes[i].waitTimes.push_back(processes[i].waitTime);
+				processes[i].swap = true;
+
+				cpu.addProcess(processes[i]);
+				deque<Process>* q = cpu.getProcessQueue();
+				std::sort(q->begin(), q->end(), compareTau);
+
+				// rectify preempt flag
+				processes[i].preempt = false;
+
+						// count preemptions
 						preemptions++;
-						if(p->cpuBound)
+						if(processes[i].cpuBound)
 							cpuPreemptions++;
 						else
 							ioPreemptions++;
 
-						Process* p2 = cpu.currentProcess;
+						// increase context for switch
 						cpu.context += t_cs;
 
-						if(time < 10000)
+						// set flag for sorting purposes
+						p2->preempt = true;
+						std::sort(q->begin(), q->end(), compareTau);
+
+						if(time < 10000 || print)
 						{
-							std::cout << "time " << time << "ms: Process " << p->id << " (tau " << p->tau << "ms) completed I/O; preempting " << p2->id << " ";
+							std::cout << "time " << time << "ms: Process " << processes[i].id << " (tau " << processes[i].tau << "ms) will preempt " << p2->id << " ";
 							cpu.printQueue();
 						}
 						cpu.popFront();
-
 						cpu.addProcess(*p2);
-						deque<Process>* q = cpu.getProcessQueue();
 						std::sort(q->begin(), q->end(), compareTau);
 
 						p2->inQueue = true;
 						p2->beginTime = time;
+						p2->waitTime = 0;
 						p2->inCPU = false;
 
 						if(p2->processed)
 							p2->remainingTime++;
+						cpu.switchingProcess = &processes[i];
+			}
+		}
 
-						p->step++;
+		// process specific updates at every tick
+		for (int i = 0; i < n; i++)
+		{
+			processes[i].processed = true;
+			Process* p2 = cpu.currentProcess;
 
-						cpu.switchingProcess = p;
+			// add process to queue
+			if(time == processes[i].nextArrivalTime && cpu.currentProcess != NULL && cpu.context == 0 && processes[i].tau < (p2->tau - p2->cpuTime))
+			{
+				// add the process and sort it according to tau
+				processes[i].beginTime = time;
+				processes[i].inQueue = true;
 
-						p->inQueue = false;
-						p->remainingTime = p->cpuBurstTime[p->step];
-						p->cpuTime = 0;
-						p->waitTimes.push_back(p->waitTime);
-						p->preempt = true;
-						p->swap = true;
+				// if it's preempt, configure properly
+				if(cpu.currentProcess != NULL && cpu.context == 0 && processes[i].tau < (p2->tau - p2->cpuTime))
+				{
+					processes[i].preempt = true;
+					processes[i].step++;
+					processes[i].inQueue = false;
+					processes[i].remainingTime = processes[i].cpuBurstTime[processes[i].step];
+					processes[i].cpuTime = 0;
+					processes[i].waitTimes.push_back(processes[i].waitTime);
+					processes[i].swap = true;
+
+				}
+
+				cpu.addProcess(processes[i]);
+				deque<Process>* q = cpu.getProcessQueue();
+				std::sort(q->begin(), q->end(), compareTau);
+
+				// rectify preempt flag
+				processes[i].preempt = false;
+
+				// perform rest of preemption
+				if(cpu.currentProcess != NULL && cpu.context == 0)
+				{
+					if(processes[i].tau < (p2->tau - p2->cpuTime))
+					{
+						// count preemptions
+						preemptions++;
+						if(processes[i].cpuBound)
+							cpuPreemptions++;
+						else
+							ioPreemptions++;
+
+						// increase context for switch
+						cpu.context += t_cs;
+
+						// set flag for sorting purposes
+						p2->preempt = true;
+						deque<Process>* q = cpu.getProcessQueue();
+						std::sort(q->begin(), q->end(), compareTau);
+
+						if(time < 10000 || print)
+						{
+							std::cout << "time " << time << "ms: Process " << processes[i].id << " (tau " << processes[i].tau << "ms) completed I/O; preempting " << p2->id << " ";
+							cpu.printQueue();
+						}
+						cpu.popFront();
+						cpu.addProcess(*p2);
+						std::sort(q->begin(), q->end(), compareTau);
+
+						p2->inQueue = true;
+						p2->beginTime = time;
+						p2->waitTime = 0;
+						p2->inCPU = false;
+
+						if(p2->processed)
+							p2->remainingTime++;
+						cpu.switchingProcess = &processes[i];
 
 						goto queueStep;
 					}
 				}
 
 				// normal add operation (completed IO or initial arrival)
-				if(p->inIO)
+				if(processes[i].inIO)
 				{
-					p->inIO = false;
-					p->step++;
-					if(time < 10000)
+					processes[i].inIO = false;
+					processes[i].step++;
+					if(time < 10000 || print)
 					{
-						cout << "time " << time << "ms: " <<"Process "<< p->id <<" (tau " << p->tau << "ms) completed I/O; added to ready queue ";
+						cout << "time " << time << "ms: " <<"Process "<< processes[i].id <<" (tau " << processes[i].tau << "ms) completed I/O; added to ready queue ";
 						cpu.printQueue();
 					}
 				}
 				else
 				{
-					if(time < 10000)
+					if(time < 10000 || print)
 					{
-						cout << "time " << time << "ms: " << "Process " << p->id << " (tau " << p->tau << "ms) arrived; added to ready queue ";
+						cout << "time " << time << "ms: " << "Process " << processes[i].id << " (tau " << processes[i].tau << "ms) arrived; added to ready queue ";
 						cpu.printQueue();
 					}
 				}
@@ -771,52 +890,53 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 			queueStep:
 
 			// Check queue status (if it is time to switch)
-			if (p->inQueue)
+			if (processes[i].inQueue)
 			{
 				// if there's no other process runnning then run this process
-				if (cpu.currentProcess == NULL && cpu.switchingProcess == NULL && *p == cpu.front())
+				if (cpu.currentProcess == NULL && cpu.switchingProcess == NULL && processes[i] == cpu.front())
 				{
-					p->inQueue = false;
-					p->swap = true;
+					processes[i].inQueue = false;
+					processes[i].swap = true;
+					processes[i].preempt = false;
 					cpu.context += t_cs / 2;
-					cpu.switchingProcess = p;
+					cpu.switchingProcess = &processes[i];
 
-					if(p->timeLeft == 0 || p->timeLeft == -1)
-						p->timeLeft = p->cpuBurstTime[p->step];
-					if(p->remainingTime == 0 || p->remainingTime == -1)
+					if(processes[i].timeLeft == 0 || processes[i].timeLeft == -1)
+						processes[i].timeLeft = processes[i].cpuBurstTime[processes[i].step];
+					if(processes[i].remainingTime == 0 || processes[i].remainingTime == -1)
 					{
-						p->remainingTime = p->cpuBurstTime[p->step];
-						p->cpuTime = 0;
+						processes[i].remainingTime = processes[i].cpuBurstTime[processes[i].step];
+						processes[i].cpuTime = 0;
 					}
-					p->waitTimes.push_back(p->waitTime);
-					p->waitTime = 0;
+					processes[i].waitTimes.push_back(processes[i].waitTime);
+					processes[i].waitTime = 0;
 					cpu.popFront();
 				}
 				else
 				{
-					p->waitTime += 1;
+					processes[i].waitTime += 1;
 				}
 			}
 
 			// Check CPU status (if the burst is done)
-			if(p->inCPU)
+			if(processes[i].inCPU)
 			{
 				// if it is time to burst
-				if(p->remainingTime == 0 || p->remainingTime == -1)
+				if(processes[i].remainingTime == 0 || processes[i].remainingTime == -1)
 				{
-					p->preempt = false;
-					cpu.switchingProcess = p;
+					processes[i].preempt = false;
+					cpu.switchingProcess = &processes[i];
 					cpu.context += t_cs/2;
-					p->inCPU = false;
+					processes[i].inCPU = false;
 
-					if(p->step == int(p->cpuBurstTime.size()-1))
+					if(processes[i].step == int(processes[i].cpuBurstTime.size()-1))
 					{
-						p->inQueue = false;
-						p->inIO = false;
+						processes[i].inQueue = false;
+						processes[i].inIO = false;
 
 						alive--;
 						cout<<"time "<<time<<"ms: ";
-						cout<<"Process "<<p->id<<" terminated ";
+						cout<<"Process "<<processes[i].id<<" terminated ";
 						cpu.printQueue();
 
 						cpu.currentProcess = NULL;
@@ -824,43 +944,43 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 					}
 
 					// Burst completion messaging
-					int updateArrivalTime = time+(p->ioBurstTime)[p->step]+(t_cs/2);
-					p->nextArrivalTime = updateArrivalTime;
+					int updateArrivalTime = time+(processes[i].ioBurstTime)[processes[i].step]+(t_cs/2);
+					processes[i].nextArrivalTime = updateArrivalTime;
 
-					if(time < 10000)
-						cout<<"time "<<time<<"ms: Process "<<p->id<<" (tau " << p->tau << "ms) completed a CPU burst; "<<p->cpuBurstTime.size()-p->step-1;
+					if(time < 10000 || print)
+						cout<<"time "<<time<<"ms: Process "<<processes[i].id<<" (tau " << processes[i].tau << "ms) completed a CPU burst; "<<processes[i].cpuBurstTime.size()-processes[i].step-1;
 
 					// Print whether there is a single or multiple bursts left
-					if(p->cpuBurstTime.size() - p->step - 1 == 1 && time < 10000)
+					if(processes[i].cpuBurstTime.size() - processes[i].step - 1 == 1 && time < 10000 || print)
 						cout << " burst to go ";
 					else if(time < 10000)
 						cout << " bursts to go ";
-					if(time < 10000)
+					if(time < 10000 || print)
 						cpu.printQueue();
 
 					// Recalculate tau once the burst is done
-					int newTau = ceil((1-alpha)*p->tau + (alpha)*p->cpuBurstTime[p->step]);
-					if(time < 10000)
+					int newTau = ceil((1-alpha)*processes[i].tau + (alpha)*processes[i].cpuBurstTime[processes[i].step]);
+					if(time < 10000 || print)
 					{
-						std::cout << "time " << time << "ms: Recalculating tau for process " << p->id << ": old tau " << p->tau << "ms ==> new tau " << newTau << "ms ";
+						std::cout << "time " << time << "ms: Recalculating tau for process " << processes[i].id << ": old tau " << processes[i].tau << "ms ==> new tau " << newTau << "ms ";
 						cpu.printQueue();
 					}
-					p->tau = newTau; 
+					processes[i].tau = newTau; 
 
-					if(time < 10000)
+					if(time < 10000 || print)
 					{
-						cout << "time " << time << "ms: Process " << p->id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
+						cout << "time " << time << "ms: Process " << processes[i].id << " switching out of CPU; blocking on I/O until time " << updateArrivalTime << "ms ";
 						cpu.printQueue();
 					}
-					p->cpuTime = 0;
+					processes[i].cpuTime = 0;
 
 					// Switch out the process
 					cpu.currentProcess = NULL;
 					goto cpuSkip;
 				}
-				p->cpuTime++;
-				p->timeLeft--;
-				p->remainingTime--;
+				processes[i].cpuTime++;
+				processes[i].timeLeft--;
+				processes[i].remainingTime--;
 			}
 			cpuSkip:;
 		}
