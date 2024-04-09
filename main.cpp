@@ -119,7 +119,7 @@ string cpuUtilization(int time, vector<Process> processes, int n){
 }
 
 // calculates the average CPU burst time for a group of processes and returns it in the specified format as a String
-string avgCpuBurstTime(int time, vector<Process> processes, int n, int num_cpu)
+string avgCpuBurstTime(vector<Process> processes, int n, int num_cpu)
 {
 	double avgBurst = 0;
 	int burstCount = 0;
@@ -254,7 +254,7 @@ string avgTurnaround(int time, vector<Process>& processes, int n, int num_cpu, i
 	return ceilTo3(avgBurst / burst) + " ms (" + ceilTo3(avgCPUBoundBurst / cpuBurst) + " ms/" + ceilTo3(avgIOBoundBurst / ioBurst) + " ms)";
 }
 
-vector<double> preemptionTurnaroundTime(double turnaroundTime, vector<Process> &processes, int n, int cpuTurnaroundTime, int ioTurnaroundTime, int t_cs)
+vector<double> preemptionTurnaroundTime(double turnaroundTime, vector<Process> &processes, int n, int cpuTurnaroundTime, int ioTurnaroundTime)
 {
 	vector<double> ans;
 
@@ -456,7 +456,7 @@ void FCFS(vector<Process> &processes, int n, int t_cs, int num_cpu, ofstream &ou
 
 	outputFile << "Algorithm FCFS" << endl;
 	outputFile <<"-- CPU utilization: "<<cpuUtilization(time,processes,n)<<"%"<<endl;
-	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << endl;
+	outputFile << "-- average CPU burst time: " << avgCpuBurstTime( processes, n, num_cpu) << endl;
 	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << endl;
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << endl;
 	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
@@ -643,7 +643,7 @@ void SJF(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 
 	outputFile << "Algorithm SJF" << std::endl;
 	outputFile << "-- CPU utilization: " << cpuUtilization(time, processes, n) << "%" << std::endl;
-	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << std::endl;
+	outputFile << "-- average CPU burst time: " << avgCpuBurstTime( processes, n, num_cpu) << std::endl;
 	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << std::endl;
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << std::endl;
 	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
@@ -1118,8 +1118,13 @@ void SRT(vector<Process> &processes, int n, int t_cs, double alpha, int num_cpu,
 
 	outputFile << "Algorithm SRT" << std::endl;
 	outputFile << "-- CPU utilization: " << cpuUtilization(time, processes, n) << "%" << std::endl;
+<<<<<<< Updated upstream
 	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << std::endl;
 	outputFile << "-- average wait time: " << ceilTo3(avgWait) << " (" << ceilTo3(cpuAvgWait) << " ms/" << ceilTo3(ioAvgWait) << " ms)" << std::endl;
+=======
+	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(processes, n, num_cpu) << std::endl;
+	outputFile << "-- average wait time: " << avgWaitTime(time, processes, n, num_cpu) << std::endl;
+>>>>>>> Stashed changes
 	outputFile << "-- average turnaround time: " << avgTurnaround(time, processes, n, num_cpu, cpuContextSwitch, ioContextSwitch, t_cs) << std::endl;
 	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
 	outputFile << "-- number of preemptions: " << preemptions << " (" << ioPreemptions << "/" << cpuPreemptions << ")" << std::endl;
@@ -1363,7 +1368,7 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 		}
 		vector<double> turnarounds;
 
-		turnarounds = preemptionTurnaroundTime(turnaroundTime, processes, n, cpuTurnaroundTime, ioTurnaroundTime, t_cs);
+		turnarounds = preemptionTurnaroundTime(turnaroundTime, processes, n, cpuTurnaroundTime, ioTurnaroundTime);
 		turnaroundTime = turnarounds[0];
 		cpuTurnaroundTime = turnarounds[1];
 		ioTurnaroundTime = turnarounds[2];
@@ -1392,15 +1397,6 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 
 		bursts += p->cpuBurstTime.size();
 	}
-
-	// cout << turnaroundTime / bursts << " " << cpuTurnaroundTime / cpuBursts << endl;
-
-	// 	Turnaround times are to be measured for each process that you simulate. Turnaround time is defined as the end-to-end time a process spends in executing a single CPU burst.
-
-	// More specifically, this is measured from process arrival time through to when the CPU burst is completed and the process is switched out of the CPU. Therefore, this measure includes the second half of the initial context switch in and the first half of the final context switch out, as well as any other context switches that occur while the CPU burst is being completed (i.e., due to preemptions).
-
-
-
 	time = time + t_cs / 2 - 1;
 	cout << "time " << time << "ms: Simulator ended for RR ";
 	cpu.printQueue();
@@ -1408,13 +1404,12 @@ void RR(vector<Process> &processes, int n, int t_cs, int t_slice, int num_cpu, o
 
 	outputFile << "Algorithm RR" << endl;
 	outputFile << "-- CPU utilization: " << cpuUtilization(time, processes, n) << "%" << endl;
-	outputFile << "-- average CPU burst time: " << avgCpuBurstTime(time, processes, n, num_cpu) << endl;
+	outputFile << "-- average CPU burst time: " << avgCpuBurstTime( processes, n, num_cpu) << endl;
 	outputFile << "-- average wait time: " << ceilTo3(waitTime / count) <<" ms "<<"("<<ceilTo3(cpuWaitTime/cpuWaitCount)<<" ms/"<<ceilTo3(ioWaitTime/ioWaitCount)<<" ms)"<< endl;
 	outputFile << "-- average turnaround time: " << ceilTo3(turnaroundTime / bursts) << " ms (" << ceilTo3(cpuTurnaroundTime / cpuBursts) << " ms/" << ceilTo3(ioTurnaroundTime / ioBursts) <<" ms)"<< endl;
 	outputFile << "-- number of context switches: " << contextSwitch << " (" << cpuContextSwitch << "/" << ioContextSwitch << ")" << std::endl;
 	;
 	outputFile << "-- number of preemptions: "<<preemption << " ("<<cpuPreemption<<"/"<<ioPreemption<<")"<< endl;
-	outputFile << endl;
 }
 
 int main(int argc, char *argv[])
